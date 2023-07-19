@@ -16,48 +16,7 @@ music.current_duration: .half 0		# duração da nota que está tocando agora
 .text
 
 setup: 
-	li s0, 0xFF000000
-	li s1, 0x38
-
-	la a0, tile0
-	li a1, 0
-	li a2, 0
-	li a3, 0
-	li a4, 0
-	li a5, 0
-	call printTile
-	
-	la a0, tile0
-	li a1, 17
-	li a2, 0
-	li a3, 6
-	li a4, 0
-	li a5, 0
-	call printTile
-	
-	la a0, tile1
-	li a1, 0
-	li a2, 17
-	li a3, 0
-	li a4, 1
-	li a5, 0
-	call printTile
-	
-	la a0, tile1
-	li a1, 17
-	li a2, 17
-	li a3, 6
-	li a4, 1
-	li a5, 0
-	call printTile
-	
-	sb s1, 0(s0)
-	
-	sb s1, 16(s0)
-	li t0, 5120
-	add t0, s0, t0
-	sb s1, 0(t0)
-	sb s1, 16(t0)
+	call printMap
 	
 gameloop:
 	
@@ -69,17 +28,71 @@ gameloop:
 # ---- Funções ----
 
 # printa a tela toda com base nos tiles e no quanto precisa cortar dos lados
-
+# a0 = endereco da matriz
+# a1 = frame
 printMap:
-	addi sp, sp, -4
+	addi sp, sp, -28
 	sw ra, 0(sp)
+	sw s0, 4(sp)
+	sw s1, 8(sp)
+	sw s2, 12(sp)
+	sw s3, 16(sp)
+	sw s4, 20(sp)
+	sw s5, 24(sp)
 	
 	# implementar a parte dos ponteiros dos limites visiveis depois, por enquanto so conseguir imprimir com base nos tiles
 	
+	li s4, 0	# contador coluna
+	li s5, 0	# contador linha
+	mv s0, a0	# t2 = endereco movel da matriz
+	li s2, 0	# posX
+	li s3, 0	# posY
+	mv s1, a1	# salva o frame
 	
+loopPrMap:
+	lh t3, 0(s0)
 	
+	# idx 0
+	beqz t3, addr0
+	
+	# idx 1
+	la a0, tile1
+	j imprimirTile
+	
+addr0:
+	la a0, tile0
+	
+imprimirTile:
+	mv a1, s2	# posX
+	mv a2, s3	# posY
+	li a3, 0	# quantos pixeis cortar, por enqaunto vai ser 0
+	li a4, 0	# por enquanto, cortar da direita
+	mv a5, s1	# frame a printar
+	call printTile
+	addi s2, s2, 16
+	addi s4, s4, 1
+	addi s0, s0, 2
+	li t0, 20
+	bne s4, t0, loopPrMap
+	
+	# troca de linha
+	li s4, 0		# reinicia o contador
+	li s2, 0		# reincia a posX
+	addi s5, s5, 1		# incrementa o num de linhas
+	addi s0, s0, -20	# volta o num de tiles que pinta horizontalmente
+	addi s0, s0, 20		# depende de quantos tiles vai ter por linha no mapa todo, ai a gente vai mudando
+	addi s3, s3, 16		# incrementa o posY
+	li t1, 20
+	bne s5, t1, loopPrMap	# se n terminou as linhas, vai printar a prox
+	
+	lw s5, 24(sp)
+	lw s4, 20(sp)
+	lw s3, 16(sp)
+	lw s2, 12(sp)
+	lw s1, 8(sp)
+	lw s0, 4(sp)
 	lw ra, 0(sp)
-	addi sp, sp, 4
+	addi sp, sp, 28
 	ret
 
 # printa uma tile de 16 por 16, a partir do pixel especificado
@@ -88,7 +101,7 @@ printMap:
 # a1: posX do bitmap
 # a2: posY do bitmap
 # a3: quantos pixeis cortar dos lados (0 a 15)
-# a4: cortar da direita = 1, cortar da esquerda = 0
+# a4: cortar da direita = 0, cortar da esquerda = 1
 # a5: frame
 printTile:
 	addi sp, sp -8
