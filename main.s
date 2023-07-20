@@ -8,14 +8,19 @@
 music.num: .word 72
 # note0, duration_bote0, note1, ... 
 music.note_and_duration: .half 76,400,75,200,76,600,75,200,76,400,69,200,72,1200,76,400,75,200,76,200,76,300,72,300,74,1800,76,400,75,200,76,600,75,200,76,400,69,200,72,1200,76,400,76,200,76,200,67,300,69,300,72,1600,69,200,69,200,72,200,72,400,77,200,69,400,67,200,67,200,72,200,72,400,76,200,67,400,65,200,65,200,69,200,69,400,74,200,65,400,64,200,64,200,67,200,67,400,72,200,64,400,69,200,69,200,72,200,72,400,77,200,69,400,69,200,69,200,72,200,72,400,78,200,69,400,71,200,71,200,72,200,72,200,73,200,73,200,74,200,74,400,79,600,79,800
-music.initial_time: .word 0 		# guarda o tempo que a nota começou a tocar
-music.counter: .half 0, 1		# para manter referência de qual nota deve tocar
+music.initial_time: .word 0 		# guarda o tempo que a nota comeï¿½ou a tocar
+music.counter: .half 0, 1		# para manter referï¿½ncia de qual nota deve tocar
 music.note_counter: .word 0		# conta a quant. de notas
-music.current_duration: .half 0		# duração da nota que está tocando agora
+music.current_duration: .half 0		# duraï¿½ï¿½o da nota que estï¿½ tocando agora
 
 .text
 
 setup: 
+	# teste do printMap
+	la a0, map
+	li a1, 0
+	call printMap
+
 	li s0, 0xFF000000
 	li s1, 0x38
 
@@ -93,30 +98,84 @@ setup:
 	
 gameloop:
 	
-	# verifica se uma nova nota da música precisa tocar e, se precisa, toca
+	# verifica se uma nova nota da mï¿½sica precisa tocar e, se precisa, toca
   	call music.NOTE
 	
 	j gameloop
 
-# ---- Funções ----
+# ---- Funï¿½ï¿½es ----
 
 # printa a tela toda com base nos tiles e no quanto precisa cortar dos lados
-
+# a0 = endereco da matriz
+# a1 = frame
 printMap:
-	addi sp, sp, -4
+	addi sp, sp, -28
 	sw ra, 0(sp)
+	sw s0, 4(sp)
+	sw s1, 8(sp)
+	sw s2, 12(sp)
+	sw s3, 16(sp)
+	sw s4, 20(sp)
+	sw s5, 24(sp)
 	
 	# implementar a parte dos ponteiros dos limites visiveis depois, por enquanto so conseguir imprimir com base nos tiles
 	
+	li s4, 0	# contador coluna
+	li s5, 0	# contador linha
+	mv s0, a0	# t2 = endereco movel da matriz
+	li s2, 0	# posX
+	li s3, 0	# posY
+	mv s1, a1	# salva o frame
 	
+loopPrMap:
+	lh t3, 0(s0)
 	
+	# idx 0
+	beqz t3, addr0
+	
+	# idx 1
+	la a0, tile1
+	j imprimirTile
+	
+addr0:
+	la a0, tile0
+	
+imprimirTile:
+	mv a1, s2	# posX
+	mv a2, s3	# posY
+	li a3, 0	# quantos pixeis cortar, por enqaunto vai ser 0
+	li a4, 0	# por enquanto, cortar da direita
+	mv a5, s1	# frame a printar
+	call printTile
+	addi s2, s2, 16
+	addi s4, s4, 1
+	addi s0, s0, 2
+	li t0, 20
+	bne s4, t0, loopPrMap
+	
+	# troca de linha
+	li s4, 0		# reinicia o contador
+	li s2, 0		# reincia a posX
+	addi s5, s5, 1		# incrementa o num de linhas
+	addi s0, s0, -20	# volta o num de tiles que pinta horizontalmente
+	addi s0, s0, 20		# depende de quantos tiles vai ter por linha no mapa todo, ai a gente vai mudando
+	addi s3, s3, 16		# incrementa o posY
+	li t1, 20
+	bne s5, t1, loopPrMap	# se n terminou as linhas, vai printar a prox
+	
+	lw s5, 24(sp)
+	lw s4, 20(sp)
+	lw s3, 16(sp)
+	lw s2, 12(sp)
+	lw s1, 8(sp)
+	lw s0, 4(sp)
 	lw ra, 0(sp)
-	addi sp, sp, 4
+	addi sp, sp, 28
 	ret
 
 # printa uma tile de 16 por 16, a partir do pixel especificado
 # -- Argumentos --
-# a0: endereço base da tile
+# a0: endereï¿½o base da tile
 # a1: posX do bitmap
 # a2: posY do bitmap
 # a3: quantos pixeis cortar dos lados (0 a 15)
@@ -127,7 +186,7 @@ printTile:
 	sw s0, 0(sp)
 	sw s1, 4(sp)
 
-	li t6, 0xFF0	# t6 = endereço base da tela que queremos printar
+	li t6, 0xFF0	# t6 = endereï¿½o base da tela que queremos printar
 	add t6, t6, a5
 	slli t6, t6, 20
 	add t6, a1, t6	# adiciona a posX no endereco do bitmap
@@ -145,7 +204,7 @@ printTile:
 	bnez a4, printTileDir
 	
 	# print pela esquerda	
-	mv t2, a0	# endereço do tile
+	mv t2, a0	# endereï¿½o do tile
 	
 loopPrTile1:
 	lb t3, 0(t2)		# carrega a cor do tile
@@ -181,7 +240,7 @@ loopPrTile2:
 	li t0, 0		# reinicia o contador
 	addi t1, t1, 1		# incrementa o num de linhas
 	sub t2, t2, s0		# volta o num de pixeis que pinta horizontalmente
-	addi t2, t2, 16		# não precisa do +1 pelos testes em papel que eu fiz, funciona só indo pra prox linha (caracteristica de comecar pela direita)
+	addi t2, t2, 16		# nï¿½o precisa do +1 pelos testes em papel que eu fiz, funciona sï¿½ indo pra prox linha (caracteristica de comecar pela direita)
 	sub t6, t6, s0		# volta o num de pixeis que pinta horizontalmente
 	addi t6, t6, 320	# segue a mesma logica do  t2
 	bne t1, s1, loopPrTile2	# se n terminou as linhas, vai printar a prox
@@ -193,7 +252,7 @@ fimPrTile:
 	ret
 
 music.NOTE:
-  # pega a duração da nota atual
+  # pega a duraï¿½ï¿½o da nota atual
   	la t1, music.current_duration
   	lhu t1, 0(t1)
   # faz a syscall de tempo para comparar com o tempo inicial salvo
