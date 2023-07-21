@@ -18,13 +18,21 @@ music.current_duration: .half 0		# duraï¿½ï¿½o da nota que estï¿½ tocando agora
 setup: 
 	# teste do printMap
 	la a0, map
+	la t0, posSupEsq
+	lhu t0, 0(t0)
+	slli t0, t0, 1
+	add a0, a0, t0
 	li a1, 0
+	la a2, mapLength
+	lhu a2, 0(a2)
+	la a3, cortePixel
+	lb a3, 0(a3)
 	call printMap
 
 	li s0, 0xFF000000
 	li s1, 0x38
 
-	la a0, tile0
+	la a0, fundoAzul
 	li a1, 0
 	li a2, 0
 	li a3, 0
@@ -32,7 +40,7 @@ setup:
 	li a5, 0
 	call printTile
 	
-	la a0, tile0
+	la a0, fundoAzul
 	li a1, 17
 	li a2, 0
 	li a3, 6
@@ -103,13 +111,15 @@ gameloop:
 	
 	j gameloop
 
-# ---- Funï¿½ï¿½es ----
+# ---- Funcoes ----
 
 # printa a tela toda com base nos tiles e no quanto precisa cortar dos lados
-# a0 = endereco da matriz
+# a0 = endereco do comeco de onde vai printar (matriz + tile inicial)
 # a1 = frame
+# a2 = largura da matriz do mapa
+# a3 = o quanto vai cortar da tile da esquerda
 printMap:
-	addi sp, sp, -28
+	addi sp, sp, -36
 	sw ra, 0(sp)
 	sw s0, 4(sp)
 	sw s1, 8(sp)
@@ -117,6 +127,8 @@ printMap:
 	sw s3, 16(sp)
 	sw s4, 20(sp)
 	sw s5, 24(sp)
+	sw s6, 28(sp)
+	sw s7, 32(sp)
 	
 	# implementar a parte dos ponteiros dos limites visiveis depois, por enquanto so conseguir imprimir com base nos tiles
 	
@@ -126,6 +138,31 @@ printMap:
 	li s2, 0	# posX
 	li s3, 0	# posY
 	mv s1, a1	# salva o frame
+	mv s6, a2	# tamanho da matriz do mapa
+	slli s6, s6, 1	# multiplicando por 2 pois a matriz eh composta de halfwords
+	mv s7, a3	# num de pixeis a cortar na esquerda
+	
+	# labels que vão definir o quanto cortar baseado em qual tile tem que imprimir
+tileEsq:
+	mv a3, s7
+	li a4, 1
+	j loopPrMap
+
+# vou colocar aqui no meio pra n ter que colocar mais jumps
+incEsqPosX:
+	li t0, 16
+	sub t0, t0, s7
+	add s2, s2, t0
+	j voltaMap
+
+tileDir:
+	li t0, 16
+	sub a3, t0, s7	# vai cortar o num de pixeis na direita o quanto apareceu na esq, pra completar
+	li a4, 0
+	j loopPrMap
+	
+tileMid:
+	li a3, 0
 	
 loopPrMap:
 	lh t3, 0(s0)
@@ -134,35 +171,48 @@ loopPrMap:
 	beqz t3, addr0
 	
 	# idx 1
-	la a0, tile1
+	li t0, 1
+	beq t0, t3, addr1
+	
+	# idx 2
+	la a0, itemBlock
 	j imprimirTile
 	
 addr0:
-	la a0, tile0
+	la a0, fundoAzul
+	j imprimirTile
+
+addr1:
+	la a0, floorBlock
 	
 imprimirTile:
 	mv a1, s2	# posX
 	mv a2, s3	# posY
-	li a3, 0	# quantos pixeis cortar, por enqaunto vai ser 0
-	li a4, 0	# por enquanto, cortar da direita
 	mv a5, s1	# frame a printar
 	call printTile
+	beqz s4, incEsqPosX	# se for o primeiro tile, vai ter um incremento diferente pro s2
 	addi s2, s2, 16
+voltaMap:
 	addi s4, s4, 1
 	addi s0, s0, 2
 	li t0, 20
-	bne s4, t0, loopPrMap
+	blt s4, t0, tileMid
+	# se imprimiu 20, agora eh so imprimir o da direita e depois fazer a troca de linha
+	li t0, 21
+	bne s4, t0, tileDir
 	
 	# troca de linha
 	li s4, 0		# reinicia o contador
 	li s2, 0		# reincia a posX
 	addi s5, s5, 1		# incrementa o num de linhas
-	addi s0, s0, -20	# volta o num de tiles que pinta horizontalmente
-	addi s0, s0, 20		# depende de quantos tiles vai ter por linha no mapa todo, ai a gente vai mudando
+	addi s0, s0, -42	# volta o num de tiles que pinta horizontalmente *2 pq o endereco eh de halfwords
+	add s0, s0, s6		# depende de quantos tiles vai ter por linha no mapa todo, ai a gente vai mudando
 	addi s3, s3, 16		# incrementa o posY
-	li t1, 20
-	bne s5, t1, loopPrMap	# se n terminou as linhas, vai printar a prox
+	li t1, 15
+	bne s5, t1, tileEsq	# se n terminou as linhas, vai printar a prox
 	
+	lw s7, 32(sp)
+	lw s6, 28(sp)
 	lw s5, 24(sp)
 	lw s4, 20(sp)
 	lw s3, 16(sp)
@@ -170,12 +220,12 @@ imprimirTile:
 	lw s1, 8(sp)
 	lw s0, 4(sp)
 	lw ra, 0(sp)
-	addi sp, sp, 28
+	addi sp, sp, 36
 	ret
 
 # printa uma tile de 16 por 16, a partir do pixel especificado
 # -- Argumentos --
-# a0: endereï¿½o base da tile
+# a0: endereco base da tile
 # a1: posX do bitmap
 # a2: posY do bitmap
 # a3: quantos pixeis cortar dos lados (0 a 15)
@@ -185,6 +235,10 @@ printTile:
 	addi sp, sp -8
 	sw s0, 0(sp)
 	sw s1, 4(sp)
+
+	# se ta pedindo pra cortar mais que 15 pixeis, imprime nada
+	li t0, 16
+	bge a3, t0, fimPrTile
 
 	li t6, 0xFF0	# t6 = endereï¿½o base da tela que queremos printar
 	add t6, t6, a5
@@ -204,7 +258,7 @@ printTile:
 	bnez a4, printTileDir
 	
 	# print pela esquerda	
-	mv t2, a0	# endereï¿½o do tile
+	mv t2, a0	# endereco do tile
 	
 loopPrTile1:
 	lb t3, 0(t2)		# carrega a cor do tile
