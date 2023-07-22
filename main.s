@@ -2,6 +2,10 @@
 
 .data
 
+# KDMMIO
+.eqv KDMMIO_CONTROL_ADDRESS	0xFF200000
+.eqv KDMMIO_KEYDOWN_ADDRESS	0xFF210000
+
 .include "matrizMapa.data"
 .include "tiles.data"
 
@@ -12,6 +16,14 @@ music.initial_time: .word 0 		# guarda o tempo que a nota comeï¿½ou a tocar
 music.counter: .half 0, 1		# para manter referï¿½ncia de qual nota deve tocar
 music.note_counter: .word 0		# conta a quant. de notas
 music.current_duration: .half 0		# duraï¿½ï¿½o da nota que estï¿½ tocando agora
+
+MOVEX:		.byte 0		# left: -1, right: 1
+MOVEY:		.byte 0		# up: -1, down: 1
+JUMP:		.byte 0		# jump: 1, nothing: 0
+MARIO_DIR:	.byte 0		# right: 0, left: 1
+
+MARIO_POS: .byte 144, 176 # posição do primeiro pixel do mario (x, y)
+
 
 .text
 
@@ -65,8 +77,8 @@ setup:
 	call printTile
 
 	la a0, mario
-	li a1, 34
-	li a2, 190
+	li a1, 144
+	li a2, 176
 	li a3, 0
 	li a4, 1
 	li a5, 0
@@ -105,13 +117,53 @@ setup:
 	sb s1, 16(t0)
 	
 gameloop:
-	
+
 	# verifica se uma nova nota da mï¿½sica precisa tocar e, se precisa, toca
   	call music.NOTE
-	
+	call INPUT
 	j gameloop
 
 # ---- Funcoes ----
+
+# por enquanto, printa o novo tile no itemBlock e printa o powerUp em cima
+# avaliar chamar sempre no gameloop
+HIT_itemBlock:
+	addi sp, sp, -28
+	sw a0, 0(sp)
+	sw a1, 4(sp)
+	sw a2, 8(sp)
+	sw a3, 12(sp)
+	sw a4, 16(sp)
+	sw a5, 20(sp)
+	sw ra, 24(sp)
+
+	la a1, MARIO_POS
+	lb a2, 1(a1)
+	lb a1, 0(a1)
+
+	# printa o bloco de chão onde era o bloco de item
+	la a0, floorBlock
+	addi a2, a2, -16
+	li a3, 0
+	li a4, 1
+	li a5, 0
+	call printTile
+
+	# printa o power up um tile acima do bloco de item
+	la a0, powerUp
+	addi a2, a2, -16
+	call printTile
+
+	lw ra, 24(sp)
+	lw a5, 20(sp)
+	lw a4, 16(sp)
+	lw a3, 12(sp)
+	lw a2, 8(sp)
+	lw a1, 4(sp)
+	lw a0, 0(sp)
+	addi sp, sp, 28
+
+	ret
 
 # printa a tela toda com base nos tiles e no quanto precisa cortar dos lados
 # a0 = endereco do comeco de onde vai printar (matriz + tile inicial)
@@ -389,3 +441,4 @@ music.RESET:
 # vamo que vamo :)
 
 .include "SYSTEMv21.s"
+.include "input.s"
