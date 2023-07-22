@@ -2,20 +2,16 @@
 
 .data
 
-# KDMMIO
-.eqv KDMMIO_CONTROL_ADDRESS	0xFF200000
-.eqv KDMMIO_KEYDOWN_ADDRESS	0xFF210000
-
 .include "matrizMapa.data"
 .include "tiles.data"
 
 music.num: .word 72
 # note0, duration_bote0, note1, ... 
 music.note_and_duration: .half 76,400,75,200,76,600,75,200,76,400,69,200,72,1200,76,400,75,200,76,200,76,300,72,300,74,1800,76,400,75,200,76,600,75,200,76,400,69,200,72,1200,76,400,76,200,76,200,67,300,69,300,72,1600,69,200,69,200,72,200,72,400,77,200,69,400,67,200,67,200,72,200,72,400,76,200,67,400,65,200,65,200,69,200,69,400,74,200,65,400,64,200,64,200,67,200,67,400,72,200,64,400,69,200,69,200,72,200,72,400,77,200,69,400,69,200,69,200,72,200,72,400,78,200,69,400,71,200,71,200,72,200,72,200,73,200,73,200,74,200,74,400,79,600,79,800
-music.initial_time: .word 0 		# guarda o tempo que a nota come�ou a tocar
-music.counter: .half 0, 1		# para manter refer�ncia de qual nota deve tocar
+music.initial_time: .word 0 		# guarda o tempo que a nota comeï¿½ou a tocar
+music.counter: .half 0, 1		# para manter referï¿½ncia de qual nota deve tocar
 music.note_counter: .word 0		# conta a quant. de notas
-music.current_duration: .half 0		# dura��o da nota que est� tocando agora
+music.current_duration: .half 0		# duraï¿½ï¿½o da nota que estï¿½ tocando agora
 
 # tempo que exibiu a ultima frame
 frameTime: .word 0
@@ -47,7 +43,7 @@ gameloop:
 	li t1, 33	# 1000 ms / 30 fps
 	bltu t0, t1, gameloop
 	
-	# verifica se uma nova nota da m�sica precisa tocar e, se precisa, toca
+	# verifica se uma nova nota da mï¿½sica precisa tocar e, se precisa, toca
   	call music.NOTE
   	
   	call input
@@ -73,46 +69,6 @@ gameloop:
 	j gameloop
 
 # ---- Funcoes ----
-
-# por enquanto, printa o novo tile no itemBlock e printa o powerUp em cima
-# avaliar chamar sempre no gameloop
-HIT_itemBlock:
-	addi sp, sp, -28
-	sw a0, 0(sp)
-	sw a1, 4(sp)
-	sw a2, 8(sp)
-	sw a3, 12(sp)
-	sw a4, 16(sp)
-	sw a5, 20(sp)
-	sw ra, 24(sp)
-
-	la a1, MARIO_POS
-	lb a2, 1(a1)
-	lb a1, 0(a1)
-
-	# printa o bloco de ch�o onde era o bloco de item
-	la a0, floorBlock
-	addi a2, a2, -16
-	li a3, 0
-	li a4, 1
-	li a5, 0
-	call printTile
-
-	# printa o power up um tile acima do bloco de item
-	la a0, powerUp
-	addi a2, a2, -16
-	call printTile
-
-	lw ra, 24(sp)
-	lw a5, 20(sp)
-	lw a4, 16(sp)
-	lw a3, 12(sp)
-	lw a2, 8(sp)
-	lw a1, 4(sp)
-	lw a0, 0(sp)
-	addi sp, sp, 28
-
-	ret
 
 # printa a tela toda com base nos tiles e no quanto precisa cortar dos lados
 # a0 = endereco do comeco de onde vai printar (matriz + tile inicial)
@@ -143,7 +99,7 @@ printMap:
 	slli s6, s6, 1	# multiplicando por 2 pois a matriz eh composta de halfwords
 	mv s7, a3	# num de pixeis a cortar na esquerda
 	
-	# labels que v�o definir o quanto cortar baseado em qual tile tem que imprimir
+	# labels que vão definir o quanto cortar baseado em qual tile tem que imprimir
 tileEsq:
 	mv a3, s7
 	li a4, 1
@@ -241,7 +197,7 @@ printTile:
 	li t0, 16
 	bge a3, t0, fimPrTile
 
-	li t6, 0xFF0	# t6 = endere�o base da tela que queremos printar
+	li t6, 0xFF0	# t6 = endereï¿½o base da tela que queremos printar
 	add t6, t6, a5
 	slli t6, t6, 20
 	add t6, a1, t6	# adiciona a posX no endereco do bitmap
@@ -295,7 +251,7 @@ loopPrTile2:
 	li t0, 0		# reinicia o contador
 	addi t1, t1, 1		# incrementa o num de linhas
 	sub t2, t2, s0		# volta o num de pixeis que pinta horizontalmente
-	addi t2, t2, 16		# n�o precisa do +1 pelos testes em papel que eu fiz, funciona s� indo pra prox linha (caracteristica de comecar pela direita)
+	addi t2, t2, 16		# nï¿½o precisa do +1 pelos testes em papel que eu fiz, funciona sï¿½ indo pra prox linha (caracteristica de comecar pela direita)
 	sub t6, t6, s0		# volta o num de pixeis que pinta horizontalmente
 	addi t6, t6, 320	# segue a mesma logica do  t2
 	bne t1, s1, loopPrTile2	# se n terminou as linhas, vai printar a prox
@@ -307,7 +263,7 @@ fimPrTile:
 	ret
 
 music.NOTE:
-  # pega a dura��o da nota atual
+  # pega a duraï¿½ï¿½o da nota atual
   	la t1, music.current_duration
   	lhu t1, 0(t1)
   # faz a syscall de tempo para comparar com o tempo inicial salvo
@@ -474,4 +430,3 @@ fimInput:
 # vamo que vamo :)
 
 .include "SYSTEMv21.s"
-.include "input.s"
