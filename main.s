@@ -13,12 +13,15 @@ music.counter: .half 0, 1		# para manter refer�ncia de qual nota deve tocar
 music.note_counter: .word 0		# conta a quant. de notas
 music.current_duration: .half 0		# dura��o da nota que est� tocando agora
 
+# tempo que exibiu a ultima frame
+frameTime: .word 0
+
 .text
 
 setup: 
 	# teste do printMap
 	la a0, map
-	la t0, posSupEsq
+	la t0, posEsq
 	lhu t0, 0(t0)
 	slli t0, t0, 1
 	add a0, a0, t0
@@ -28,86 +31,40 @@ setup:
 	la a3, cortePixel
 	lb a3, 0(a3)
 	call printMap
-
-	li s0, 0xFF000000
-	li s1, 0x38
-
-	la a0, fundoAzul
-	li a1, 0
-	li a2, 0
-	li a3, 0
-	li a4, 0
-	li a5, 0
-	call printTile
-	
-	la a0, fundoAzul
-	li a1, 17
-	li a2, 0
-	li a3, 6
-	li a4, 0
-	li a5, 0
-	call printTile
-	
-	la a0, tile1
-	li a1, 0
-	li a2, 17
-	li a3, 0
-	li a4, 1
-	li a5, 0
-	call printTile
-	
-	la a0, tile1
-	li a1, 17
-	li a2, 17
-	li a3, 6
-	li a4, 1
-	li a5, 0
-	call printTile
-
-	la a0, mario
-	li a1, 34
-	li a2, 190
-	li a3, 0
-	li a4, 1
-	li a5, 0
-	call printTile
-
-	la a0, floorBlock
-	li a1, 0
-	li a2, 207
-	li a3, 0
-	li a4, 1
-	li a5, 0
-	call printTile
-
-	la a0, floorBlock
-	li a1, 17
-	li a2, 207
-	li a3, 0
-	li a4, 1
-	li a5, 0
-	call printTile
-
-	la a0, itemBlock
-	li a1, 17
-	li a2, 156
-	li a3, 0
-	li a4, 1
-	li a5, 0
-	call printTile
-	
-	sb s1, 0(s0)
-	
-	sb s1, 16(s0)
-	li t0, 5120
-	add t0, s0, t0
-	sb s1, 0(t0)
-	sb s1, 16(t0)
 	
 gameloop:
+	# 30 fps, se n passou o tempo suficiente a gente n muda a tela
+	li a7, 30
+	ecall
+	
+	la t0, frameTime
+	lw t0, 0(t0)
+	sub t0, a0, t0	# quanto tempo passou
+	li t1, 33	# 1000 ms / 30 fps
+	bltu t0, t1, gameloop
 	
 	# verifica se uma nova nota da m�sica precisa tocar e, se precisa, toca
   	call music.NOTE
+  	
+  	call input
+  	
+  	la a0, map
+	la t0, posEsq
+	lhu t0, 0(t0)
+	slli t0, t0, 1
+	add a0, a0, t0		# a0 = endereco deslocado
+	li a1, 0
+	la a2, mapLength
+	lhu a2, 0(a2)
+	la a3, cortePixel
+	lb a3, 0(a3)
+	call printMap
+	
+	li a7, 30
+	ecall
+	
+	la t0, frameTime
+	sw a0, 0(t0)
 	
 	j gameloop
 
@@ -384,6 +341,90 @@ music.RESET:
 	sh zero, 0(t0)
 	sh t1, 2(t0)
 	
+	ret
+	
+	
+input:	
+	li t0, 0xFF200000	# endereco KDMMIO
+	lw t1, 0(t0)		# bit de controle do teclado
+	andi t1, t1, 1		# isola so o bit menos significativo
+	
+	beqz t1, fimInput	# se nao apertou, entao volta pro loop
+	lw t2, 4(t0)		# carrega a tecla pressionada
+	
+	li t3, 'a'
+	beq t3, t2, left
+	
+	li t3, 'd'
+	beq t3, t2, right
+	
+	j fimInput
+	
+left:
+	la t0, cortePixel		# quantidade de pixeis que vao ser cortados
+	lb t1, 0(t0)
+	addi t1, t1, -2			# vai 2 pixeis pra esquerda
+	blt t1, zero, mudarTileEsq	# se passou do limite da tile atual, vai trocar a tile
+	sb t1, 0(t0)			# guarda a nova posicao
+	
+	j fimInput
+
+mudarTileEsq:
+	la t2, posEsq			# carrega o tile superior esquerdo que ta exibindo
+	lh t3, 0(t2)			
+	addi t3, t3, -1			# vai um tile pra esquerda
+	blt t3, zero, limiteEsq		# a nao ser que seja negativo, senao nao move
+	sh t3, 0(t2)			# guarda o novo tile
+	
+	addi t1, t1, 16			# coloca a quant de pixeis cortados como positivo de novo
+	sb t1, 0(t0)			# guarda a nova quant de pixeis cortados
+	
+	j fimInput
+	
+limiteEsq:
+	sh zero, 0(t2)			# forca as duas variaveis pra zero, ou seja, para no canto esquerdo do mapa
+	sb zero, 0(t0)
+	
+	j fimInput
+	
+right:
+	# a diferenca pode ser no maximo 20 pra so mostrar o que tem na matriz
+	la t2, posEsq			# carrega o tile superior esquerdo que ta exibindo
+	lh t3, 0(t2)
+	la t4, mapLength		# pega o tamanho do mapa
+	lh t4, 0(t4)		
+	addi t3, t3, 1			# vai um tile pra direita
+	sub t5, t4, t3
+	li t6, 20
+	blt t5, t6, limiteDir		# se dif for menor que 20, "prende" a matriz
+
+	la t0, cortePixel		# quantidade de pixeis que vao ser cortados
+	lb t1, 0(t0)
+	addi t1, t1, 2			# vai 2 pixeis pra esquerda
+	li t2, 16
+	bge t1, t2, mudarTileDir	# se passou do limite da tile atual, vai trocar a tile
+	
+	sb t1, 0(t0)			# guarda a nova posicao
+	
+	j fimInput
+
+mudarTileDir:
+	la t2 posEsq
+	sh t3, 0(t2)			# guarda o novo tile
+	
+	addi t1, t1, -16		# coloca a quant de pixeis cortados como menor que 16 de novo
+	sb t1, 0(t0)			# guarda a nova quant de pixeis cortados
+	
+	j fimInput
+	
+limiteDir:
+	addi t4, t4, -20
+	sh t4, 0(t2)			# forca as duas variaveis pra zero, ou seja, para no canto esquerdo do mapa
+	sb zero, 0(t0)
+	
+	j fimInput
+
+fimInput:
 	ret
 
 # vamo que vamo :)
