@@ -20,8 +20,11 @@ frameTime: .word 0
 marioGrande: .byte 0	# 0 = mario pequeno, 1 = mario grande
 
 # moveX foi utilizado para ver se está virado para a direita: 1, ou para a esquerda: -1
-moveX: .byte 1		# 1 = andando direita, 0 = parado, -1 = andando esquerda
-moveY: .byte 0 		# 1 = no ar, 0 = no chao
+moveX: .byte 1			# 1 = andando direita, 0 = parado, -1 = andando esquerda
+moveY: .byte 0 			# 1 = no ar, 0 = no chao
+velocidadeY: .word 0 	# 0 se n estiver subindo, se estiver eh o num de pixeis que ainda tem que subir
+marioPosY: .half 176	# posicao vertical do mario no bitmap (canto superior esquerdo), comeca na tile 11 de cima pra baixo (11*16)
+marioPosTileY: .byte 0	# qual dos pixeis de 0 a 15 no tile ele esta, vai ajudar na hora da colisao
 
 # testando
 MARIO_MOV: .byte 0		# 0 = parado, 1 = andando1, 2 = andando2, 3 = andando3
@@ -75,11 +78,15 @@ gameloop:
 	lb a3, 0(a3)
 	call printMap
 	
-
+	call fisicaY
 
 	# imprime o mario no tile em cima do chao, no 10 do canto da tela
 	la a0, MARIO_MOV
 	lb a2, 0(a0)
+
+	la t0, moveY
+	lb t1, 0(t0)
+	bnez t1, pulando		# se moveY for 1, ele esta pulando, que tem preferencia sobre as outras sprites de movimento
 
 	li a1, 1
 	beq a2, a1, andando2
@@ -107,14 +114,18 @@ andando3:
 	la a0, mario_andar3
 	j printMarioGL
 
+pulando:
+	la a0, mario_pulo
+	j printMarioGL
+
 default:
 	la a0, mario_default
 printMarioGL:
 	li a1, 9	# vai aparecer no decimo tile a partir da esquerda (indexado em 0)
 	li t0, 16
 	mul a1, a1, t0
-	li a2, 11	# e em cima do tile de chao
-	mul a2, a2, t0
+	la a2, marioPosY
+	lh a2, 0(a2)
 	li a3, 0
 	li a4, 0
 	mv a5, s0
@@ -452,9 +463,25 @@ input:
 	
 	li t3, 'd'
 	beq t3, t2, right
+
+	li t3 'w'
+	beq t3, t2, pula
 	
 	j fimInput
 	
+pula:
+	la t0, moveY
+	lb t1, 0(t0)
+	bne t1, zero, fimInput	# se ja esta no ar, faz nada, nao tem pulo duplo
+
+	li t1, 1
+	sb t1, 0(t0)			# atualiza falando que ele esta no ar
+	la t0, velocidadeY
+	li t1, 48				# pular a altura de 3 tiles (16 * 3)
+	sw t1, 0(t0)
+
+	j fimInput
+
 left:
 	li t0, -1
 	la t1, moveX
@@ -552,6 +579,72 @@ fimInputParado:
 	lw t1, 4(sp)
 	lw t0, 0(sp)
 	addi sp, sp, 8
+	ret
+
+# faz toda a verificacao de se o mario ta caindo, pulando, se tem que atualizar a pos vertical dele
+fisicaY:
+	la t0, moveY
+	lb t1, 0(t0)
+	beqz t1, verificaChao	# se o mario esta no chao, verifica se agora tem algum buraco debaixo dele
+
+	la t1, velocidadeY
+	lw t2, 0(t1)
+	bgt t2, zero, fisSubindo	# se a velocidade eh maior que 0, eh pra subir
+
+# mario caindo
+	# TODO verificacao de colisao pra ver se o mario chegou no chao
+	la t1, marioPosY
+	la t2, marioPosTileY
+	# adicionando 2 a posicao y do mario no bitmap (desce)
+	lh t3, 0(t1)
+	addi t3, t3, 2
+	sh t3, 0(t1)
+	# voltando 2 a posicao relativa no tile
+	lb t3, 0(t2)
+	addi t3, t3, -2
+	blt t3, zero, desceTileY
+	sb t3, 0(t2)
+
+	j fimFisicaY
+
+desceTileY:
+	addi t3, t3, 16
+	sb t3, 0(t2)
+
+	j fimFisicaY
+
+fisSubindo:
+	# TODO verificacao de colisao
+
+	addi t2, t2, -2				# vamos subir 2 pixeis por vez
+	sw t2, 0(t1)
+	la t1, marioPosY
+	la t2, marioPosTileY
+	# adicionando 2 a posicao y do mario no bitmap
+	lh t3, 0(t1)
+	addi t3, t3, -2
+	sh t3, 0(t1)
+	# adicionando 2 a posicao relativa no tile (sobe)
+	lb t3, 0(t2)
+	addi t3, t3, 2
+	li t0, 16
+	bge t3, t0, sobeTileY		# se a pos relativa passou de 16, significa que ele foi pra prox tile
+	sb t3, 0(t2)
+
+	j fimFisicaY
+
+sobeTileY:
+	addi t3, t3, -16			# deixa o valor como menor que 16, ou seja, entre 0 e 15
+	sb t3, 0(t2)
+
+	# aqui tambem vamos ter que atualizar a posicao da matriz do mario
+
+	j fimFisicaY
+
+verificaChao:
+	# TODO junto com a colisao
+
+fimFisicaY:
 	ret
 
 # vamo que vamo :)
