@@ -8,13 +8,19 @@
 music.num: .word 72
 # note0, duration_bote0, note1, ... 
 music.note_and_duration: .half 76,400,75,200,76,600,75,200,76,400,69,200,72,1200,76,400,75,200,76,200,76,300,72,300,74,1800,76,400,75,200,76,600,75,200,76,400,69,200,72,1200,76,400,76,200,76,200,67,300,69,300,72,1600,69,200,69,200,72,200,72,400,77,200,69,400,67,200,67,200,72,200,72,400,76,200,67,400,65,200,65,200,69,200,69,400,74,200,65,400,64,200,64,200,67,200,67,400,72,200,64,400,69,200,69,200,72,200,72,400,77,200,69,400,69,200,69,200,72,200,72,400,78,200,69,400,71,200,71,200,72,200,72,200,73,200,73,200,74,200,74,400,79,600,79,800
-music.initial_time: .word 0 		# guarda o tempo que a nota comeï¿½ou a tocar
-music.counter: .half 0, 1		# para manter referï¿½ncia de qual nota deve tocar
+music.initial_time: .word 0 		# guarda o tempo que a nota come�ou a tocar
+music.counter: .half 0, 1		# para manter refer�ncia de qual nota deve tocar
 music.note_counter: .word 0		# conta a quant. de notas
-music.current_duration: .half 0		# duraï¿½ï¿½o da nota que estï¿½ tocando agora
+music.current_duration: .half 0		# dura��o da nota que est� tocando agora
 
-# tempo que exibiu a ultima frame
+# tempo que exibiu a ultima frame, pra controlar o fps
 frameTime: .word 0
+
+# variaveis pra controlar a anima��o
+marioGrande: .byte 0	# 0 = mario pequeno, 1 = mario grande
+moveX: .byte 0		# 1 = andando, 0 = parado
+moveY: .byte 0 		# 1 = no ar, 0 = no chao
+
 
 .text
 
@@ -32,6 +38,8 @@ setup:
 	lb a3, 0(a3)
 	call printMap
 	
+	# s0 = frame que sera exibido
+	li s0, 0
 gameloop:
 	# 30 fps, se n passou o tempo suficiente a gente n muda a tela
 	li a7, 30
@@ -43,23 +51,45 @@ gameloop:
 	li t1, 33	# 1000 ms / 30 fps
 	bltu t0, t1, gameloop
 	
-	# verifica se uma nova nota da mï¿½sica precisa tocar e, se precisa, toca
+	# verifica se uma nova nota da m�sica precisa tocar e, se precisa, toca
   	call music.NOTE
   	
+  	# verifica se o jogador apertou alguma coisa
   	call input
   	
+  	# printa o mapa atualizado
   	la a0, map
 	la t0, posEsq
 	lhu t0, 0(t0)
 	slli t0, t0, 1
 	add a0, a0, t0		# a0 = endereco deslocado
-	li a1, 0
+	mv a1, s0
 	la a2, mapLength
 	lhu a2, 0(a2)
 	la a3, cortePixel
 	lb a3, 0(a3)
 	call printMap
 	
+	# imprime o mario no tile em cima do chao, no 10 do canto da tela
+	la a0, mario
+	li a1, 9	# vai aparecer no decimo tile a partir da esquerda (indexado em 0)
+	li t0, 16
+	mul a1, a1, t0
+	li a2, 11	# e em cima do tile de chao
+	mul a2, a2, t0
+	li a3, 0
+	li a4, 0
+	mv a5, s0
+	li a6, -1
+	call printTile
+	
+	# troca qual vai ser a proxima frame a exibir, pra n ter problema dos personagens na frente ficarem piscando
+	li t0, 0xFF200604
+	sw s0, 0(t0)
+	
+	xori s0, s0, 1
+	
+	# guarda o tempo que terminou de fazer essa frame
 	li a7, 30
 	ecall
 	
@@ -99,7 +129,7 @@ printMap:
 	slli s6, s6, 1	# multiplicando por 2 pois a matriz eh composta de halfwords
 	mv s7, a3	# num de pixeis a cortar na esquerda
 	
-	# labels que vão definir o quanto cortar baseado em qual tile tem que imprimir
+	# labels que v�o definir o quanto cortar baseado em qual tile tem que imprimir
 tileEsq:
 	mv a3, s7
 	li a4, 1
@@ -146,6 +176,7 @@ imprimirTile:
 	mv a1, s2	# posX
 	mv a2, s3	# posY
 	mv a5, s1	# frame a printar
+	li a6, 1
 	call printTile
 	beqz s4, incEsqPosX	# se for o primeiro tile, vai ter um incremento diferente pro s2
 	addi s2, s2, 16
@@ -188,6 +219,7 @@ voltaMap:
 # a3: quantos pixeis cortar dos lados (0 a 15)
 # a4: cortar da direita = 1, cortar da esquerda = 0
 # a5: frame
+# a6: imagem espelhada? a6 = -1 sim, a6 = 1 normal
 printTile:
 	addi sp, sp -8
 	sw s0, 0(sp)
@@ -197,7 +229,7 @@ printTile:
 	li t0, 16
 	bge a3, t0, fimPrTile
 
-	li t6, 0xFF0	# t6 = endereï¿½o base da tela que queremos printar
+	li t6, 0xFF0	# t6 = endere�o base da tela que queremos printar
 	add t6, t6, a5
 	slli t6, t6, 20
 	add t6, a1, t6	# adiciona a posX no endereco do bitmap
@@ -215,20 +247,32 @@ printTile:
 	bnez a4, printTileDir
 	
 	# print pela esquerda	
+	bgt a6, zero, prTile1Normal
+	
+	# print espelhado
+	addi t2, a0, 15		# nao tenho ctz se pra printar com corte esse espelhado funciona
+	j loopPrTile1
+	
+prTile1Normal:
 	mv t2, a0	# endereco do tile
 	
 loopPrTile1:
 	lb t3, 0(t2)		# carrega a cor do tile
 	sb t3, 0(t6)		# pinta na tela
 	addi t0, t0, 1		# incrementa o num de pixeis pintados na linha
-	addi t2, t2, 1		# incrementa o endereco da img 
+	add t2, t2, a6		# incrementa o endereco da img 
 	addi t6, t6, 1		# incrementa o endereco da VGA
 	bne t0, s0, loopPrTile1
 	
 	# troca de linha
 	li t0, 0		# reinicia o contador
 	addi t1, t1, 1		# incrementa o num de linhas
+	bgt a6, zero, loopNormal1
+	add t2, t2, s0		# pra fazer o print espelhado, tem que ir pra frente, de onde comecou
+	j voltaPr1
+loopNormal1:
 	sub t2, t2, s0		# volta o num de pixeis que pinta horizontalmente
+voltaPr1:
 	addi t2, t2, 16		# + 17 pq: +1 pra ajustar o indice, pq estamos indexados em 0, e +16 pra ir pra prox linha
 	sub t6, t6, s0		# volta o num de pixeis que pinta horizontalmente
 	addi t6, t6, 320	# vamos testar, mas acho que n segue a logica do t2
@@ -237,21 +281,32 @@ loopPrTile1:
 	j fimPrTile
 
 printTileDir:
+	bgt a6, zero, prTile2Normal
+	# print espelhado
+	addi t2, a0, 15		# nao tenho ctz se pra printar com corte esse espelhado funciona
+	j loopPrTile2
+	
+prTile2Normal:
 	add t2, a0, a3		# o idx do 1o pixel que vamos printar eh o msm que o num de pixeis que vao ser cortados
 	
 loopPrTile2:
 	lb t3, 0(t2)		# carrega a cor do tile
 	sb t3, 0(t6)		# pinta na tela
 	addi t0, t0, 1		# incrementa o num de pixeis pintados na linha
-	addi t2, t2, 1		# incrementa o endereco da img 
+	add t2, t2, a6		# incrementa o endereco da img 
 	addi t6, t6, 1		# incrementa o endereco da VGA
 	bne t0, s0, loopPrTile2
 	
 	# troca de linha
 	li t0, 0		# reinicia o contador
 	addi t1, t1, 1		# incrementa o num de linhas
+	bgt a6, zero, loopNormal2
+	add t2, t2, s0		# o voltar do espelhado eh ir pra frente
+	j voltaPr2
+loopNormal2:
 	sub t2, t2, s0		# volta o num de pixeis que pinta horizontalmente
-	addi t2, t2, 16		# nï¿½o precisa do +1 pelos testes em papel que eu fiz, funciona sï¿½ indo pra prox linha (caracteristica de comecar pela direita)
+voltaPr2:
+	addi t2, t2, 16		# n�o precisa do +1 pelos testes em papel que eu fiz, funciona s� indo pra prox linha (caracteristica de comecar pela direita)
 	sub t6, t6, s0		# volta o num de pixeis que pinta horizontalmente
 	addi t6, t6, 320	# segue a mesma logica do  t2
 	bne t1, s1, loopPrTile2	# se n terminou as linhas, vai printar a prox
@@ -263,7 +318,7 @@ fimPrTile:
 	ret
 
 music.NOTE:
-  # pega a duraï¿½ï¿½o da nota atual
+  # pega a dura��o da nota atual
   	la t1, music.current_duration
   	lhu t1, 0(t1)
   # faz a syscall de tempo para comparar com o tempo inicial salvo
@@ -280,7 +335,7 @@ music.NOTE:
  	blt t0, zero, music.PLAY
 
   # now check if that difference is equal or greater than the note duration
-  	bge t0, t1, music.PLAY
+  	bgeu t0, t1, music.PLAY
 
 	ret		# if not, just go back
 
