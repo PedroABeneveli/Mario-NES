@@ -16,10 +16,15 @@ music.current_duration: .half 0		# duraï¿½ï¿½o da nota que estï¿½ tocando agora
 # tempo que exibiu a ultima frame, pra controlar o fps
 frameTime: .word 0
 
-# variaveis pra controlar a animação
+# variaveis pra controlar a animaï¿½ï¿½o
 marioGrande: .byte 0	# 0 = mario pequeno, 1 = mario grande
-moveX: .byte 0		# 1 = andando, 0 = parado
+
+# moveX foi utilizado para ver se estÃ¡ virado para a direita: 1, ou para a esquerda: -1
+moveX: .byte 1		# 1 = andando direita, 0 = parado, -1 = andando esquerda
 moveY: .byte 0 		# 1 = no ar, 0 = no chao
+
+# testando
+MARIO_MOV: .byte 0		# 0 = parado, 1 = andando1, 2 = andando2, 3 = andando3
 
 
 .text
@@ -50,7 +55,7 @@ gameloop:
 	sub t0, a0, t0	# quanto tempo passou
 	li t1, 33	# 1000 ms / 30 fps
 	bltu t0, t1, gameloop
-	
+
 	# verifica se uma nova nota da mï¿½sica precisa tocar e, se precisa, toca
   	call music.NOTE
   	
@@ -70,8 +75,41 @@ gameloop:
 	lb a3, 0(a3)
 	call printMap
 	
+
+
 	# imprime o mario no tile em cima do chao, no 10 do canto da tela
-	la a0, mario
+	la a0, MARIO_MOV
+	lb a2, 0(a0)
+
+	li a1, 1
+	beq a2, a1, andando2
+	li a1, 2
+	beq a2, a1, andando3
+	li a1, 3
+	beq a2, a1, andando1
+	j default
+
+andando1:
+	li a1, 1
+	sb a1, 0(a0)
+	la a0, mario_andar1
+	j printMarioGL
+
+andando2:
+	li a1, 2
+	sb a1, 0(a0)
+	la a0, mario_andar2
+	j printMarioGL
+
+andando3:
+	li a1, 3
+	sb a1, 0(a0)
+	la a0, mario_andar3
+	j printMarioGL
+
+default:
+	la a0, mario_default
+printMarioGL:
 	li a1, 9	# vai aparecer no decimo tile a partir da esquerda (indexado em 0)
 	li t0, 16
 	mul a1, a1, t0
@@ -80,7 +118,8 @@ gameloop:
 	li a3, 0
 	li a4, 0
 	mv a5, s0
-	li a6, -1
+	la a6, moveX
+	lb a6, 0(a6)
 	call printTile
 	
 	# troca qual vai ser a proxima frame a exibir, pra n ter problema dos personagens na frente ficarem piscando
@@ -129,7 +168,7 @@ printMap:
 	slli s6, s6, 1	# multiplicando por 2 pois a matriz eh composta de halfwords
 	mv s7, a3	# num de pixeis a cortar na esquerda
 	
-	# labels que vão definir o quanto cortar baseado em qual tile tem que imprimir
+	# labels que vï¿½o definir o quanto cortar baseado em qual tile tem que imprimir
 tileEsq:
 	mv a3, s7
 	li a4, 1
@@ -404,7 +443,8 @@ input:
 	lw t1, 0(t0)		# bit de controle do teclado
 	andi t1, t1, 1		# isola so o bit menos significativo
 	
-	beqz t1, fimInput	# se nao apertou, entao volta pro loop
+	beqz t1, fimInputParado
+	#beqz t1, fimInput	# se nao apertou, entao volta pro loop
 	lw t2, 4(t0)		# carrega a tecla pressionada
 	
 	li t3, 'a'
@@ -416,6 +456,16 @@ input:
 	j fimInput
 	
 left:
+	li t0, -1
+	la t1, moveX
+	sb t0, 0(t1)			# mario olhando pra esquerda
+
+	la t0, MARIO_MOV
+	lb t1, 0(t0)
+	bnez t1, notzerol
+	li t1, 1
+	sb t1, 0(t0)
+notzerol:
 	la t0, cortePixel		# quantidade de pixeis que vao ser cortados
 	lb t1, 0(t0)
 	addi t1, t1, -2			# vai 2 pixeis pra esquerda
@@ -443,6 +493,16 @@ limiteEsq:
 	j fimInput
 	
 right:
+	li t0, 1
+	la t1, moveX
+	sb t0, 0(t1)			# mario olhando pra direita
+
+	la t0, MARIO_MOV
+	lb t1, 0(t0)
+	bnez t1, notzeror
+	li t1, 1
+	sb t1, 0(t0)
+notzeror:
 	# a diferenca pode ser no maximo 20 pra so mostrar o que tem na matriz
 	la t2, posEsq			# carrega o tile superior esquerdo que ta exibindo
 	lh t3, 0(t2)
@@ -480,6 +540,18 @@ limiteDir:
 	j fimInput
 
 fimInput:
+	ret
+
+fimInputParado:
+	addi sp, sp, -8
+	sw t0, 0(sp)
+	sw t1, 4(sp)
+	la t0, MARIO_MOV
+	li t1, 0
+	sb t1, 0(t0)
+	lw t1, 4(sp)
+	lw t0, 0(sp)
+	addi sp, sp, 8
 	ret
 
 # vamo que vamo :)
