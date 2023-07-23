@@ -24,6 +24,7 @@ moveX: .byte 1			# 1 = andando direita, 0 = parado, -1 = andando esquerda
 moveY: .byte 0 			# 1 = no ar, 0 = no chao
 velocidadeY: .word 0 	# 0 se n estiver subindo, se estiver eh o num de pixeis que ainda tem que subir
 marioPosY: .half 176	# posicao vertical do mario no bitmap (canto superior), comeca na tile 11 de cima pra baixo (11*16)
+marioPosYAlin: .half 176	# posicao vertical do mario no bitmap que salva a ultima tile vertical que ele se alinhou
 marioPosTileY: .byte 0	# qual dos pixeis de 0 a 15 no tile ele esta, vai ajudar na hora da colisao
 
 # posicao do mario na matriz
@@ -34,6 +35,38 @@ MARIO_MOV: .byte 0		# 0 = parado, 1 = andando1, 2 = andando2, 3 = andando3
 
 
 .text
+
+# imprime a tela principal e espera apertar espaco
+	la a0, menu_principal
+	li a1, 0
+	call printTela
+
+	la a0, tela_enredo
+	li a1, 1
+	call printTela
+
+	li t0, 0xFF200000
+esperaInput1:
+	lw t1, 0(t0)			# controle teclado
+	andi t1, t1, 1			# mascara bit
+	beqz t1, esperaInput1	# le a tecla pressionada
+	lw t2, 4(t0)			# tecla pressionada
+
+	li t1, ' '
+	bne t2, t1, esperaInput1	# se n for igual a espaco, continua esperando
+
+	li t1, 0xFF200604
+	li t2, 1
+	sw t2, 0(t1)	# troca a frame
+
+esperaInput2:
+	lw t1, 0(t0)			# controle teclado
+	andi t1, t1, 1			# mascara bit
+	beqz t1, esperaInput2	# le a tecla pressionada
+	lw t2, 4(t0)			# tecla pressionada
+
+	li t1, ' '
+	bne t2, t1, esperaInput2	# se n for igual a espaco, continua esperando
 
 setup: 
 	# teste do printMap
@@ -280,9 +313,12 @@ loopPrMap:
 	li t0, 1
 	beq t0, t3, addr1
 
+	li t0, 5
+	beq t0, t3, addr5
+
 	# mario, como nos imprimimos o mario por cima depois, a gente pinta como ceu
-	#li t0, 4
-	#beq t0, t3, addr0
+	li t0, 4
+	beq t0, t3, addr0
 	
 	# idx 2
 	la a0, itemBlock
@@ -294,6 +330,10 @@ addr0:
 
 addr1:
 	la a0, floorBlock
+	j imprimirTile
+
+addr5:
+	la a0, powerUp
 	
 imprimirTile:
 	mv a1, s2	# posX
@@ -440,6 +480,28 @@ fimPrTile:
 	addi sp, sp, 8
 	ret
 
+# imprime uma imagem na tela inteira
+# a0 = endereco da imagem
+# a1 = frame
+printTela:
+	li t0, 0xFF0
+	add t0, t0, a1
+	slli t0, t0, 20		# endereco da tela com o frame desejado
+
+	li t1, 76800
+	add t1, t0, t1		# t1 = ultimo endereco da tela
+
+loopPrTela:
+	lw t2, 0(a0)
+	sw t2, 0(t0)
+	addi a0, a0, 4
+	addi t0, t0, 4
+	bne t0, t1, loopPrTela
+
+	ret
+
+# toca a musica, vendo se passou tempo suficiente pra tocar a proxima
+# (bug que so toca ate a metade, ja tava no meu codigo de musica de ISC)
 music.NOTE:
   # pega a dura��o da nota atual
   	la t1, music.current_duration
@@ -570,11 +632,47 @@ left:
 notzerol:
 	la t0, cortePixel		# quantidade de pixeis que vao ser cortados
 	lb t1, 0(t0)
+
+	li t6, 8
+	bge t1, t6, colisaoEsq
+	beqz t1, colisaoEsq		# se for 0 vai tentar acessar o tile do lado, entao tem que verificar
+voltaLeft1:
+	li t2, 8
+	beq t1, t2, trocaMatrizEsq
+
+voltaLeft2:
 	addi t1, t1, -2			# vai 2 pixeis pra esquerda
 	blt t1, zero, mudarTileEsq	# se passou do limite da tile atual, vai trocar a tile
 	sb t1, 0(t0)			# guarda a nova posicao
 	
 	j fimInput
+
+trocaMatrizEsq:
+	lh t3, -2(a0)			# ve a tile na esquerda do mario
+
+	bnez t3, voltaLeft2		# se a tile na esquerda n eh zero, nao eh pra ocupar aquele espaco
+	sh zero, 0(a0)
+	li t3, 4
+	sh t3, -2(a0)
+
+	la t3, marioPosMatriz
+	lh t2, 0(t3)
+	addi t2, t2, -1
+	sh t2, 0(t3)
+
+	j voltaLeft2
+
+colisaoEsq:
+	# verifica a colisao da tile da esquerda
+	lh t5, -2(a0)
+	
+	li t4, 1				# chao
+	beq t5, t4, limiteEsq
+
+	li t4, 2				# |?|
+	beq t5, t4, limiteEsq
+
+	j voltaLeft1
 
 mudarTileEsq:
 	la t2, posEsq			# carrega o tile superior esquerdo que ta exibindo
@@ -589,7 +687,13 @@ mudarTileEsq:
 	j fimInput
 	
 limiteEsq:
-	sh zero, 0(t2)			# forca as duas variaveis pra zero, ou seja, para no canto esquerdo do mapa
+	la t2, posEsq			# carrega o tile superior esquerdo que ta exibindo
+	lh t3, 0(t2)
+	li t6, 8
+	blt t1, t6, continuaLimEsq
+	addi t3, t3, 1			# se o num de corte eh >= 8, enta ele esta no tile do lado, entao tem que ir pro tile mais pra direita
+continuaLimEsq:
+	sh t3, 0(t2)			# forca as duas variaveis pra zero, ou seja, para no canto esquerdo do mapa
 	sb zero, 0(t0)
 	
 	j fimInput
@@ -730,11 +834,17 @@ desceTileY:
 	li t0, 1	# chao
 	beq t0, t5, aterrissagem
 
+	li t0, 2	# |?|
+	beq t0, t5, aterrissagem
+
 	# se for inimigo acho que pode tratar depois de alterar a posicao
 
 	addi t3, t3, 16
 	sh t4, 0(t1)
 	sb t3, 0(t2)
+
+	la t1, marioPosYAlin
+	sh t4, 0(t1)				# salva essa posicao, que esta alinhada com o tile
 
 	# atualizamos a posicao dele na matriz aqui pois faz mais sentido, ele so pode passar de altura quando ele estiver toda nela
 	la t0, marioPosMatriz
@@ -760,7 +870,15 @@ aterrissagem:
 	j fimFisicaY
 
 fisSubindo:
-	# TODO verificacao de colisao
+	slli t6, a1, 1		# t6 = incremento de linha
+	sub t0, a0, t6		# t0 = bloco em cima do mario na matriz
+	lh t4, 0(t0)
+
+	li t3, 1
+	beq t3, t4, colisaoCima
+
+	li t3, 2
+	beq t3, t4, colisaoCima
 
 	addi t2, t2, -2				# vamos subir 2 pixeis por vez
 	sw t2, 0(t1)
@@ -781,10 +899,33 @@ fisSubindo:
 
 	j fimFisicaY
 
+colisaoCima:
+	la t3, velocidadeY
+	sh zero, 0(t3)			# para a ida pra cima
+
+	la t1, marioPosY
+	la t2, marioPosYAlin
+	lh t2, 0(t2)
+	sh t2, 0(t1)
+	la t1, marioPosTileY
+	sb zero, 0(t1)
+
+	li t5, 2
+	bne t5, t4, fimFisicaY	# se n eh interrogacao pode parar
+
+	sub t0, t0, t6		# posicao em cima do bloco |?|
+	li t1, 5
+	sh t1, 0(t0)
+
+	j fimFisicaY
+
 sobeTileY:
 	addi t3, t3, -16			# deixa o valor como menor que 16, ou seja, entre 0 e 15
 	sh t4, 0(t1)
 	sb t3, 0(t2)
+
+	la t1, marioPosYAlin
+	sh t4, 0(t1)				# salva essa posicao, que esta alinhada com o tile
 
 	# atualizamos a posicao dele na matriz aqui pois faz mais sentido, ele so pode passar de altura quando ele estiver toda nela
 	# vai ter que verificar ainda
@@ -803,6 +944,19 @@ sobeTileY:
 
 verificaChao:
 	# pra ser justo, vamos ver se debaixo do mario na matriz na colisao eh vazio e se a posicao em pixeis no tile no eixo X eh maior que 0, ou se na posicao que ele esta no meio eh buraco tbm
+	slli t0, a1, 1
+	add t0, a0, t0
+	lh t1, 0(t0)		# tile logo debaixo do mario
+
+	bnez t1, fimFisicaY	# se n eh ar debaixo dele, entao n eh pra cair
+
+	la t2, cortePixel
+	lb t2, 0(t2)
+
+	bnez t2, fimFisicaY	# teste
+	la t3, moveY
+	li t4, 1
+	sb t4, 0(t3)
 
 fimFisicaY:
 	ret
