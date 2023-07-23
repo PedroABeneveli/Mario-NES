@@ -158,42 +158,92 @@ gameloop:
 	# imprime o mario no tile em cima do chao, no 10 do canto da tela
 	la a0, MARIO_MOV
 	lb a2, 0(a0)
+	la t0, marioGrande
+	lb s2, 0(t0)
 
+	bnez s2, prMarioG1
+
+	# mario pequeno
 	la t0, moveY
 	lb t1, 0(t0)
-	bnez t1, pulando		# se moveY for 1, ele esta pulando, que tem preferencia sobre as outras sprites de movimento
+	bnez t1, pulandoP		# se moveY for 1, ele esta pulando, que tem preferencia sobre as outras sprites de movimento
 
 	li a1, 1
-	beq a2, a1, andando2
+	beq a2, a1, andando2P
 	li a1, 2
-	beq a2, a1, andando3
+	beq a2, a1, andando3P
 	li a1, 3
-	beq a2, a1, andando1
-	j default
+	beq a2, a1, andando1P
+	j defaultP
 
-andando1:
+# calca do mario grande
+prMarioG1:
+	la t0, moveY
+	lb t1, 0(t0)
+	bnez t1, pulandoG1		# se moveY for 1, ele esta pulando, que tem preferencia sobre as outras sprites de movimento
+
+	li a1, 1
+	beq a2, a1, andando2G1
+	li a1, 2
+	beq a2, a1, andando3G1
+	li a1, 3
+	beq a2, a1, andando1G1
+	j defaultG1
+
+andando1G1:
+	li a1, 1
+	sb a1, 0(a0)
+	la a0, mario_grande_andar1
+	addi a0, a0, 256		# pega a parte de baixo da sprite de 16 pixels de largura e 32 de altura
+	j printMarioGL
+
+andando2G1:
+	li a1, 2
+	sb a1, 0(a0)
+	la a0, mario_grande_andar2
+	addi a0, a0, 256		# pega a parte de baixo da sprite de 16 pixels de largura e 32 de altura
+	j printMarioGL
+
+andando3G1:
+	li a1, 3
+	sb a1, 0(a0)
+	la a0, mario_grande_andar3
+	addi a0, a0, 256		# pega a parte de baixo da sprite de 16 pixels de largura e 32 de altura
+	j printMarioGL
+
+pulandoG1:
+	la a0, mario_grande_pulo
+	addi a0, a0, 256		# pega a parte de baixo da sprite de 16 pixels de largura e 32 de altura
+	j printMarioGL
+
+defaultG1:
+	la a0, mario_grande_default
+	addi a0, a0, 256		# pega a parte de baixo da sprite de 16 pixels de largura e 32 de altura
+	j printMarioGL
+
+andando1P:
 	li a1, 1
 	sb a1, 0(a0)
 	la a0, mario_andar1
 	j printMarioGL
 
-andando2:
+andando2P:
 	li a1, 2
 	sb a1, 0(a0)
 	la a0, mario_andar2
 	j printMarioGL
 
-andando3:
+andando3P:
 	li a1, 3
 	sb a1, 0(a0)
 	la a0, mario_andar3
 	j printMarioGL
 
-pulando:
+pulandoP:
 	la a0, mario_pulo
 	j printMarioGL
 
-default:
+defaultP:
 	la a0, mario_default
 printMarioGL:
 	li a1, 9	# vai aparecer no decimo tile a partir da esquerda (indexado em 0)
@@ -207,6 +257,27 @@ printMarioGL:
 	la a6, moveX
 	lb a6, 0(a6)
 	call printTile
+
+	# se eh pequeno n eh pra imprimir a parte de cima
+	beqz s2, fimPrintMarioGL
+
+	# como o metodo printMap guarda o a0, podemos so voltar os 256 pra ter a parte de cima
+	addi a0, a0, -256
+
+	li a1, 9	# vai aparecer no decimo tile a partir da esquerda (indexado em 0)
+	li t0, 16
+	mul a1, a1, t0
+	la a2, marioPosY
+	lh a2, 0(a2)
+	addi a2, a2, -16	# vai 16 pra cima, ja que eh a parte de cima da sprite
+	li a3, 0
+	li a4, 0
+	mv a5, s0
+	la a6, moveX
+	lb a6, 0(a6)
+	call printTile
+
+fimPrintMarioGL:
 	
 	# troca qual vai ser a proxima frame a exibir, pra n ter problema dos personagens na frente ficarem piscando
 	li t0, 0xFF200604
@@ -275,7 +346,7 @@ gameOver:
 # a2 = largura da matriz do mapa
 # a3 = o quanto vai cortar da tile da esquerda
 printMap:
-	addi sp, sp, -36
+	addi sp, sp, -40
 	sw ra, 0(sp)
 	sw s0, 4(sp)
 	sw s1, 8(sp)
@@ -285,6 +356,7 @@ printMap:
 	sw s5, 24(sp)
 	sw s6, 28(sp)
 	sw s7, 32(sp)
+	sw a0, 36(sp)
 	
 	# implementar a parte dos ponteiros dos limites visiveis depois, por enquanto so conseguir imprimir com base nos tiles
 	
@@ -396,6 +468,7 @@ voltaMap:
 	li t1, 15
 	bne s5, t1, tileEsq	# se n terminou as linhas, vai printar a prox
 	
+	lw a0, 36(sp)
 	lw s7, 32(sp)
 	lw s6, 28(sp)
 	lw s5, 24(sp)
@@ -405,7 +478,7 @@ voltaMap:
 	lw s1, 8(sp)
 	lw s0, 4(sp)
 	lw ra, 0(sp)
-	addi sp, sp, 36
+	addi sp, sp, 40
 	ret
 
 # printa uma tile de 16 por 16, a partir do pixel especificado
@@ -685,12 +758,13 @@ voltaLeft2:
 	j fimInput
 
 trocaMatrizEsq:
-	lh t3, -2(a0)			# ve a tile na esquerda do mario
+	addi t4, a0, -2
+	lh t3, 0(t4)			# ve a tile na esquerda do mario
 
 	bnez t3, voltaLeft2		# se a tile na esquerda n eh zero, nao eh pra ocupar aquele espaco
-	sh zero, 0(a0)
+	sh zero, 2(t4)
 	li t3, 4
-	sh t3, -2(a0)
+	sh t3, 0(t4)
 
 	la t3, marioPosMatriz
 	lh t2, 0(t3)
@@ -708,6 +782,9 @@ colisaoEsq:
 
 	li t4, 2				# |?|
 	beq t5, t4, limiteEsq
+
+	li t5, 6
+	beq t6, t5, limiteEsq
 
 	j voltaLeft1
 
@@ -775,12 +852,13 @@ voltaRight:
 	j fimInput
 
 trocaMatrizDir:
-	lh t0, 2(a0)			# ve a tile na direita do mario
+	addi t4, a0, 2
+	lh t0, 0(t4)			# ve a tile na direita do mario
 
 	bnez t0, fimInput		# se a tile na direita n eh zero, nao eh pra ocupar aquele espaco
-	sh zero, 0(a0)
+	sh zero, -2(t4)
 	li t0, 4
-	sh t0, 2(a0)
+	sh t0, 0(t4)
 
 	la t0, marioPosMatriz
 	lh t1, 0(t0)
@@ -807,15 +885,73 @@ limiteDir:
 
 colisaoDir:
 	lh t6, 2(a0)			# elemento na matriz adireita da pos do mario
+	addi t4, a0, 2
 
 	li t5, 1
 	beq t6, t5, limiteDir	# se eh uma parede, n move a tela (pos do mario)
 
 	li t5, 2
 	beq t6, t5, limiteDir	# se eh uma caixa de item, n move a tela (pos do mario)
+	
+	li t5, 6
+	beq t6, t5, limiteDir
+
+	li t5, 5
+	beq t6, t5, pegaCogumeloX
 
 	# caso seja nenhum, move normal
 	j voltaRight
+
+pegaCogumeloX:
+	addi sp, sp, -4
+	sw ra, 0(sp)
+
+	sh zero, 0(t4)
+
+	la a0, mario_grande_default	# parte de cima	
+	li a1, 9	# vai aparecer no decimo tile a partir da esquerda (indexado em 0)
+	li t0, 16
+	mul a1, a1, t0
+	la a2, marioPosY
+	lh a2, 0(a2)
+	addi a2, a2, -16	# 16 posicoes em cima de onde ele ta como pequeno
+	li a3, 0
+	li a4, 0
+	xori a5, s0, 1
+	la a6, moveX
+	lb a6, 0(a6)
+	call printTile
+
+	la a0, mario_grande_default	# parte de baixo
+	addi a0, a0, 256
+	li a1, 9	# vai aparecer no decimo tile a partir da esquerda (indexado em 0)
+	li t0, 16
+	mul a1, a1, t0
+	la a2, marioPosY
+	lh a2, 0(a2)
+	li a3, 0
+	li a4, 0
+	xori a5, s0, 1
+	la a6, moveX
+	lb a6, 0(a6)
+	call printTile
+
+	la t0, marioGrande
+	li t1, 1
+	sb t1, 0(t0)
+
+	li a0,76		# define a nota
+	li a1,500		# define a duracao da nota em ms
+	li a2,1		# define o instrumento
+	li a3,127		# define o volume
+	li a7,33		# define o syscall
+	ecall			# toca a nota
+	li a0, 1000
+	li a7, 32
+	ecall			# realiza uma pausa de 1500 ms
+
+	lw ra, 0(sp)
+	addi sp, sp, 4
 
 fimInput:
 	ret
@@ -1097,7 +1233,7 @@ goomba_fim:
 	lw a3, 12(sp)
 	lw a2, 8(sp)
 	lw a1, 4(sp)
-	lw a0, 0(sp)
+	lw a0, 0(sp)
 	addi sp, sp, 20
 	ret
 
