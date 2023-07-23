@@ -23,8 +23,11 @@ marioGrande: .byte 0	# 0 = mario pequeno, 1 = mario grande
 moveX: .byte 1			# 1 = andando direita, 0 = parado, -1 = andando esquerda
 moveY: .byte 0 			# 1 = no ar, 0 = no chao
 velocidadeY: .word 0 	# 0 se n estiver subindo, se estiver eh o num de pixeis que ainda tem que subir
-marioPosY: .half 176	# posicao vertical do mario no bitmap (canto superior esquerdo), comeca na tile 11 de cima pra baixo (11*16)
+marioPosY: .half 176	# posicao vertical do mario no bitmap (canto superior), comeca na tile 11 de cima pra baixo (11*16)
 marioPosTileY: .byte 0	# qual dos pixeis de 0 a 15 no tile ele esta, vai ajudar na hora da colisao
+
+# posicao do mario na matriz
+marioPosMatriz: .half 9, 11		# x, y
 
 # testando
 MARIO_MOV: .byte 0		# 0 = parado, 1 = andando1, 2 = andando2, 3 = andando3
@@ -47,6 +50,7 @@ setup:
 	call printMap
 	
 	# s0 = frame que sera exibido
+	# s1 = endereco do mario na matriz do mapa
 	li s0, 0
 gameloop:
 	# 30 fps, se n passou o tempo suficiente a gente n muda a tela
@@ -59,9 +63,23 @@ gameloop:
 	li t1, 33	# 1000 ms / 30 fps
 	bltu t0, t1, gameloop
 
+	# calcula a posicao do mario na matriz e salva em s1
+	la t2, map
+	la t3, mapLength
+	lh t3, 0(t3)
+
+	la t0, marioPosMatriz
+	lh t1, 0(t0)
+	slli t1, t1, 1			# pra ajustar, pq o endereco eh de halfs
+	add t2, t2, t1			# matriz + x
+	lh t1, 2(t0)
+	slli t1, t1, 1			# ajustando pra endereco de halfword
+	mul t1, t1, t3
+	add s1, t2, t1			# matriz + len * y, ou seja, s1 = *matriz[y][x]
+
 	# verifica se uma nova nota da m�sica precisa tocar e, se precisa, toca
   	call music.NOTE
-  	
+
   	# verifica se o jogador apertou alguma coisa
   	call input
   	
@@ -73,11 +91,15 @@ gameloop:
 	add a0, a0, t0		# a0 = endereco deslocado
 	mv a1, s0
 	la a2, mapLength
-	lhu a2, 0(a2)
+	lh a2, 0(a2)
 	la a3, cortePixel
 	lb a3, 0(a3)
 	call printMap
 	
+	# verifica se o mario ta caindo ou se ta subindo, modificando sua posicao
+	mv a0, s1
+	la a1, mapLength
+	lh a1, 0(a1)
 	call fisicaY
 
 	# imprime o mario no tile em cima do chao, no 10 do canto da tela
@@ -210,6 +232,10 @@ loopPrMap:
 	# idx 1
 	li t0, 1
 	beq t0, t3, addr1
+
+	# mario, como nos imprimimos o mario por cima depois, a gente pinta como ceu
+	#li t0, 4
+	#beq t0, t3, addr0
 	
 	# idx 2
 	la a0, itemBlock
@@ -448,7 +474,7 @@ music.RESET:
 	
 	ret
 	
-	
+# verifica se o jogador apertou alguma tecla e faz o necessario com base nela
 input:	
 	li t0, 0xFF200000	# endereco KDMMIO
 	lw t1, 0(t0)		# bit de controle do teclado
@@ -477,7 +503,7 @@ pula:
 	li t1, 1
 	sb t1, 0(t0)			# atualiza falando que ele esta no ar
 	la t0, velocidadeY
-	li t1, 48				# pular a altura de 3 tiles (16 * 3)
+	li t1, 56				# pular a altura de 3.5 tiles (16 * 3.5)
 	sw t1, 0(t0)
 
 	j fimInput
@@ -582,7 +608,11 @@ fimInputParado:
 	ret
 
 # faz toda a verificacao de se o mario ta caindo, pulando, se tem que atualizar a pos vertical dele
+# a0 = endereco do mario da matriz do mapa
+# a1 = largura da matriz do mapa
 fisicaY:
+	# manipulacao pra pegar a posicao do mario na matriz
+
 	la t0, moveY
 	lb t1, 0(t0)
 	beqz t1, verificaChao	# se o mario esta no chao, verifica se agora tem algum buraco debaixo dele
@@ -596,20 +626,49 @@ fisicaY:
 	la t1, marioPosY
 	la t2, marioPosTileY
 	# adicionando 2 a posicao y do mario no bitmap (desce)
-	lh t3, 0(t1)
-	addi t3, t3, 2
-	sh t3, 0(t1)
+	lh t4, 0(t1)
+	addi t4, t4, 2
 	# voltando 2 a posicao relativa no tile
 	lb t3, 0(t2)
 	addi t3, t3, -2
 	blt t3, zero, desceTileY
+	sh t4, 0(t1)
 	sb t3, 0(t2)
 
 	j fimFisicaY
 
 desceTileY:
+	# quando ele tenta descer, vemos se tem algum chao ou alguma coisa pra parar a queda (ou inimigo pra derrotar)\
+	slli t0, a1, 1
+	add t0, a0, t0
+	lh t5, 0(t0)
+
+	li t0, 1	# chao
+	beq t0, t5, aterrissagem
+
+	# se for inimigo acho que pode tratar depois de alterar a posicao
+
 	addi t3, t3, 16
+	sh t4, 0(t1)
 	sb t3, 0(t2)
+
+	# atualizamos a posicao dele na matriz aqui pois faz mais sentido, ele so pode passar de altura quando ele estiver toda nela
+	sh zero, 0(a0)			# guarda ceu onde o mario tava
+	slli t1, a1, 1
+	add a0, a0, t1			# volta pra linha de baixo
+	li t1, 4
+	sh t1, 0(a0)			# guarda mario na pos de cima
+
+	la t0, marioPosMatriz
+	lh t2, 2(t0)
+	addi t2, t2, 1
+	sh t2, 2(t0)			# atualiza a pos Y na memoria
+
+	j fimFisicaY
+
+aterrissagem:
+	la t0, moveY
+	sb zero, 0(t0)
 
 	j fimFisicaY
 
@@ -621,28 +680,42 @@ fisSubindo:
 	la t1, marioPosY
 	la t2, marioPosTileY
 	# adicionando 2 a posicao y do mario no bitmap
-	lh t3, 0(t1)
-	addi t3, t3, -2
-	sh t3, 0(t1)
+	lh t4, 0(t1)
+	addi t4, t4, -2
 	# adicionando 2 a posicao relativa no tile (sobe)
 	lb t3, 0(t2)
 	addi t3, t3, 2
 	li t0, 16
-	bge t3, t0, sobeTileY		# se a pos relativa passou de 16, significa que ele foi pra prox tile
+	bge t3, t0, sobeTileY		# se a pos relativa superior passou de 16, significa que ele foi pra prox tile
+	# se n trocou de tile, so tem que verificar se tem um bloco em cima pra onde quer ir
+	sh t4, 0(t1)
 	sb t3, 0(t2)
+
 
 	j fimFisicaY
 
 sobeTileY:
 	addi t3, t3, -16			# deixa o valor como menor que 16, ou seja, entre 0 e 15
+	sh t4, 0(t1)
 	sb t3, 0(t2)
 
-	# aqui tambem vamos ter que atualizar a posicao da matriz do mario
+	# atualizamos a posicao dele na matriz aqui pois faz mais sentido, ele so pode passar de altura quando ele estiver toda nela
+	# vai ter que verificar ainda
+	sh zero, 0(a0)			# guarda ceu onde o mario tava
+	slli t1, a1, 1
+	sub a0, a0, t1			# volta pra linha de cima
+	li t1, 4
+	sh t1, 0(a0)			# guarda mario na pos de cima
+
+	la t0, marioPosMatriz
+	lh t2, 2(t0)
+	addi t2, t2, -1
+	sh t2, 2(t0)			# atualiza a pos Y na memoria
 
 	j fimFisicaY
 
 verificaChao:
-	# TODO junto com a colisao
+	# pra ser justo, vamos ver se debaixo do mario na matriz na colisao eh vazio e se a posicao em pixeis no tile no eixo X eh maior que 0, ou se na posicao que ele esta no meio eh buraco tbm
 
 fimFisicaY:
 	ret
