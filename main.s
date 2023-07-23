@@ -325,6 +325,10 @@ loopPrMap:
 	li t0, 5
 	beq t0, t3, addr5
 
+	# idx 6
+	li t0, 6
+	beq t0, t3, addr6
+
 	# mario, como nos imprimimos o mario por cima depois, a gente pinta como ceu
 	li t0, 4
 	beq t0, t3, addr0
@@ -347,6 +351,10 @@ addr3:
 
 addr5:
 	la a0, powerUp
+	j imprimirTile
+
+addr6:
+	la a0, itemBlockUsed
 	
 imprimirTile:
 	mv a1, s2	# posX
@@ -929,6 +937,8 @@ colisaoCima:
 	li t5, 2
 	bne t5, t4, fimFisicaY	# se n eh interrogacao pode parar
 
+	li t1, 6
+	sh t1, 0(t0)		# bloco |?| se torna usado
 	sub t0, t0, t6		# posicao em cima do bloco |?|
 	li t1, 5
 	sh t1, 0(t0)
