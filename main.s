@@ -33,6 +33,7 @@ marioPosMatriz: .half 9, 11		# x, y
 # testando
 MARIO_MOV: .byte 0		# 0 = parado, 1 = andando1, 2 = andando2, 3 = andando3
 
+goomba_POS: .half 582
 
 .text
 
@@ -118,6 +119,9 @@ gameloop:
 	la a1, mapLength
 	lh a1, 0(a1)
   	call input
+
+	# necessita de temporização
+	# call goombaMove
   	
   	# printa o mapa atualizado
   	la a0, map
@@ -313,6 +317,11 @@ loopPrMap:
 	li t0, 1
 	beq t0, t3, addr1
 
+	# idx 3
+	li t0, 3
+	beq t0, t3, addr3
+
+	# idx 5
 	li t0, 5
 	beq t0, t3, addr5
 
@@ -330,6 +339,10 @@ addr0:
 
 addr1:
 	la a0, floorBlock
+	j imprimirTile
+
+addr3:
+	la a0, goomba
 	j imprimirTile
 
 addr5:
@@ -603,6 +616,9 @@ input:
 
 	li t3 'w'
 	beq t3, t2, pula
+
+	li t3, 'g'
+	beq t3, t2, goombaMove
 	
 	j fimInput
 	
@@ -959,6 +975,86 @@ verificaChao:
 	sb t4, 0(t3)
 
 fimFisicaY:
+	ret
+
+goombaMove:
+	addi sp, sp, -20
+	sw a0, 0(sp)
+	sw a1, 4(sp)
+	sw a2, 8(sp)
+	sw a3, 12(sp)
+	sw a4, 16(sp)
+
+	la a0, goomba_POS
+	lh a1, 0(a0)			# a1 = valor do goomba_POS
+	la a2, map
+	add a2, a2, a1			# a2 = endereço atual do goomba na matriz
+
+	# se chegar ao fim do mapa na esquerda, limbo pro goomba
+	li t0, 550
+	beq t0, a1, goomba_limbo
+
+	# faz a verificação de onde está o mario
+	li a4, 4
+	lh a3, 2(a2)
+	beq a3, a4, goomba_dir
+
+	lh a3, 4(a2)
+	beq a3, a4, goomba_dir
+
+	lh a3, 6(a2)
+	beq a3, a4, goomba_dir
+
+	lh a3, 8(a2)
+	beq a3, a4, goomba_dir
+
+	lh a3, 10(a2)
+	beq a3, a4, goomba_dir
+
+	lh a3, 12(a2)
+	beq a3, a4, goomba_dir
+
+	# se o mario estiver à esquerda, vai à esquerda
+goomba_esq:
+	lh a3, -2(a2)		# um endereço à esquerda do goomba
+	li a4, 1
+	# se tiver uma parede na frente, fica parado
+	beq a3, a4, goomba_fim
+
+	li a3, 0
+	sh a3, 0(a2)			# lugar atual do goomba -> fundoAzul
+	li a3, 3
+	sh a3, -2(a2)
+	addi a3, a1, -2		# decrementa o goomba_POS em 2
+	sh a3, 0(a0)
+	j goomba_fim
+
+	# se o mario estiver a 6 posições (tiles) à direita, vai à direita
+goomba_dir:
+	lh a3, 2(a2)		# um endereço à direita do goomba
+	li a4, 1
+	# se tiver uma parede na frente, fica parado
+	beq a3, a4, goomba_fim
+
+	li a3, 0
+	sh a3, 0(a2)			# lugar atual do goomba -> fundoAzul
+	li a3, 3
+	sh a3, 2(a2)
+	addi a3, a1, 2		# incrementa o goomba_POS em 2
+	sh a3, 0(a0)
+	j goomba_fim
+
+goomba_limbo:
+	li a3, 0
+	sh a3, 0(a2)			# lugar atual do goomba -> fundoAzul
+
+goomba_fim:
+	lw a4, 16(sp)
+	lw a3, 12(sp)
+	lw a2, 8(sp)
+	lw a1, 4(sp)
+	lw a0, 0(sp)
+	addi sp, sp, 20
 	ret
 
 # vamo que vamo :)
