@@ -33,7 +33,8 @@ marioPosMatriz: .half 9, 11		# x, y
 # testando
 MARIO_MOV: .byte 0		# 0 = parado, 1 = andando1, 2 = andando2, 3 = andando3
 
-goomba_POS: .half 582
+goomba_POS: .half 16, 11 #x, y #582
+goombaFrames: .byte 0	# quantos frames desde que o goomba moveu pela ultima vez
 
 .text
 
@@ -121,7 +122,19 @@ gameloop:
   	call input
 
 	# necessita de temporização
-	# call goombaMove
+	la a1, mapLength
+	lh a1, 0(a1)
+	la a0, map
+
+	la t0, goomba_POS
+	lh t1, 0(t0)
+	slli t1, t1, 1
+	add a0, a0, t1
+	lh t0, 2(t0)
+	slli t1, t0, 1
+	mul t0, t1, a1
+	add a0, a0, t0
+	call goombaMove
   	
   	# printa o mapa atualizado
   	la a0, map
@@ -625,8 +638,8 @@ input:
 	li t3 'w'
 	beq t3, t2, pula
 
-	li t3, 'g'
-	beq t3, t2, goombaMove
+	#li t3, 'g'
+	#beq t3, t2, goombaMove
 	
 	j fimInput
 	
@@ -904,6 +917,9 @@ fisSubindo:
 	li t3, 2
 	beq t3, t4, colisaoCima
 
+	li t3, 6
+	beq t3, t4, colisaoCima
+
 	addi t2, t2, -2				# vamos subir 2 pixeis por vez
 	sw t2, 0(t1)
 	la t1, marioPosY
@@ -987,6 +1003,9 @@ verificaChao:
 fimFisicaY:
 	ret
 
+# move o goomba
+# a0 = endereco do goomba na matriz
+# a1 = tamanho do mapa
 goombaMove:
 	addi sp, sp, -20
 	sw a0, 0(sp)
@@ -995,13 +1014,23 @@ goombaMove:
 	sw a3, 12(sp)
 	sw a4, 16(sp)
 
+	la t0, goombaFrames
+	lb t1, 0(t0)
+	addi t1, t1, 1
+	li t2, 30
+	bne t1, t2, goomba_fim		# se ja passaram 30 frames, faz a movimentacao
+	li t1, 0					# se vai andar, reseta o contador
+
+	#la a0, goomba_POS
+	#lh a1, 0(a0)			# a1 = valor do goomba_POS
+	#la a2, map
+	#add a2, a2, a1			# a2 = endereço atual do goomba na matriz
+	mv a2, a0
 	la a0, goomba_POS
-	lh a1, 0(a0)			# a1 = valor do goomba_POS
-	la a2, map
-	add a2, a2, a1			# a2 = endereço atual do goomba na matriz
+	lh a1, 0(a0)			# x do goomba
 
 	# se chegar ao fim do mapa na esquerda, limbo pro goomba
-	li t0, 550
+	li t0, 0
 	beq t0, a1, goomba_limbo
 
 	# faz a verificação de onde está o mario
@@ -1035,7 +1064,7 @@ goomba_esq:
 	sh a3, 0(a2)			# lugar atual do goomba -> fundoAzul
 	li a3, 3
 	sh a3, -2(a2)
-	addi a3, a1, -2		# decrementa o goomba_POS em 2
+	addi a3, a1, -1		# decrementa o goomba_POS em 2
 	sh a3, 0(a0)
 	j goomba_fim
 
@@ -1050,7 +1079,9 @@ goomba_dir:
 	sh a3, 0(a2)			# lugar atual do goomba -> fundoAzul
 	li a3, 3
 	sh a3, 2(a2)
-	addi a3, a1, 2		# incrementa o goomba_POS em 2
+	la a0, goomba_POS
+	lh a1, 0(a0)
+	addi a3, a1, 1		# decrementa o goomba_POS em 2
 	sh a3, 0(a0)
 	j goomba_fim
 
@@ -1059,6 +1090,9 @@ goomba_limbo:
 	sh a3, 0(a2)			# lugar atual do goomba -> fundoAzul
 
 goomba_fim:
+	la t0, goombaFrames
+	sb t1, 0(t0)
+
 	lw a4, 16(sp)
 	lw a3, 12(sp)
 	lw a2, 8(sp)
