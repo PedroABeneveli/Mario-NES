@@ -81,6 +81,9 @@ gameloop:
   	call music.NOTE
 
   	# verifica se o jogador apertou alguma coisa
+	mv a0, s1
+	la a1, mapLength
+	lh a1, 0(a1)
   	call input
   	
   	# printa o mapa atualizado
@@ -169,6 +172,50 @@ printMarioGL:
 	sw a0, 0(t0)
 	
 	j gameloop
+
+# aqui vamos printar o mario com a sprite de morte
+gameOver:
+	la a0, map
+	la t0, posEsq
+	lhu t0, 0(t0)
+	slli t0, t0, 1
+	add a0, a0, t0		# a0 = endereco deslocado
+	mv a1, s0
+	la a2, mapLength
+	lh a2, 0(a2)
+	la a3, cortePixel
+	lb a3, 0(a3)
+	call printMap
+
+	la a0, mario_morte
+	li a1, 9	# vai aparecer no decimo tile a partir da esquerda (indexado em 0)
+	li t0, 16
+	mul a1, a1, t0
+	la a2, marioPosY
+	lh a2, 0(a2)
+	li a3, 0
+	li a4, 0
+	mv a5, s0
+	la a6, moveX
+	lb a6, 0(a6)
+	call printTile
+
+	# troca qual vai ser a proxima frame a exibir, pra n ter problema dos personagens na frente ficarem piscando
+	li t0, 0xFF200604
+	sw s0, 0(t0)
+
+	li a0,40		# define a nota
+	li a1,1500		# define a duracao da nota em ms
+	li a2,1		# define o instrumento
+	li a3,127		# define o volume
+	li a7,33		# define o syscall
+	ecall			# toca a nota
+	li a0, 1500
+	li a7, 32
+	ecall			# realiza uma pausa de 1500 ms
+
+	li a7, 10
+	ecall
 
 # ---- Funcoes ----
 
@@ -475,6 +522,8 @@ music.RESET:
 	ret
 	
 # verifica se o jogador apertou alguma tecla e faz o necessario com base nela
+# a0 = pos do mario na matriz
+# a1 = largura da matriz
 input:	
 	li t0, 0xFF200000	# endereco KDMMIO
 	lw t1, 0(t0)		# bit de controle do teclado
@@ -568,12 +617,35 @@ notzeror:
 
 	la t0, cortePixel		# quantidade de pixeis que vao ser cortados
 	lb t1, 0(t0)
+
+	li t6, 8
+	blt t1, t6, colisaoDir		# se o mario ta alinhado na esquerda precisamos verificar se ele ta encostando em alguma coisa
+
+voltaRight:
 	addi t1, t1, 2			# vai 2 pixeis pra esquerda
 	li t2, 16
 	bge t1, t2, mudarTileDir	# se passou do limite da tile atual, vai trocar a tile
 	
 	sb t1, 0(t0)			# guarda a nova posicao
+
+	li t2, 8
+	beq t1, t2, trocaMatrizDir		# se chegou em 8, eh pra trocar a pos na matriz
 	
+	j fimInput
+
+trocaMatrizDir:
+	lh t0, 2(a0)			# ve a tile na direita do mario
+
+	bnez t0, fimInput		# se a tile na direita n eh zero, nao eh pra ocupar aquele espaco
+	sh zero, 0(a0)
+	li t0, 4
+	sh t0, 2(a0)
+
+	la t0, marioPosMatriz
+	lh t1, 0(t0)
+	addi t1, t1, 1
+	sh t1, 0(t0)
+
 	j fimInput
 
 mudarTileDir:
@@ -586,11 +658,23 @@ mudarTileDir:
 	j fimInput
 	
 limiteDir:
-	addi t4, t4, -20
-	sh t4, 0(t2)			# forca as duas variaveis pra zero, ou seja, para no canto esquerdo do mapa
+	addi t3, t3, -1
+	sh t3, 0(t2)			# forca as duas variaveis pra zero, ou seja, para no canto esquerdo do mapa
 	sb zero, 0(t0)
 	
 	j fimInput
+
+colisaoDir:
+	lh t6, 2(a0)			# elemento na matriz adireita da pos do mario
+
+	li t5, 1
+	beq t6, t5, limiteDir	# se eh uma parede, n move a tela (pos do mario)
+
+	li t5, 2
+	beq t6, t5, limiteDir	# se eh uma caixa de item, n move a tela (pos do mario)
+
+	# caso seja nenhum, move normal
+	j voltaRight
 
 fimInput:
 	ret
@@ -653,16 +737,19 @@ desceTileY:
 	sb t3, 0(t2)
 
 	# atualizamos a posicao dele na matriz aqui pois faz mais sentido, ele so pode passar de altura quando ele estiver toda nela
+	la t0, marioPosMatriz
+	lh t2, 2(t0)
+	addi t2, t2, 1
+	sh t2, 2(t0)			# atualiza a pos Y na memoria
+
+	li t0, 15
+	bge t2, t0, gameOver	# se passou do limite inferior entao ele caiu em um burado e morreu
+
 	sh zero, 0(a0)			# guarda ceu onde o mario tava
 	slli t1, a1, 1
 	add a0, a0, t1			# volta pra linha de baixo
 	li t1, 4
 	sh t1, 0(a0)			# guarda mario na pos de cima
-
-	la t0, marioPosMatriz
-	lh t2, 2(t0)
-	addi t2, t2, 1
-	sh t2, 2(t0)			# atualiza a pos Y na memoria
 
 	j fimFisicaY
 
