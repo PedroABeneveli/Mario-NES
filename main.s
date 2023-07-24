@@ -33,7 +33,7 @@ marioPosMatriz: .half 9, 11		# x, y
 # testando
 MARIO_MOV: .byte 0		# 0 = parado, 1 = andando1, 2 = andando2, 3 = andando3
 
-goomba_POS: .half 34, 11 #x, y #582
+goomba_POS: .half 37, 11 #x, y #582
 goombaFrames: .byte 0	# quantos frames desde que o goomba moveu pela ultima vez
 
 plant_POS: .half 29, 9 # x, y
@@ -354,8 +354,11 @@ gameOver:
 	li a7, 32
 	ecall			# realiza uma pausa de 1500 ms
 
-	li a7, 10
-	ecall
+	la a0, tela_gameover
+	mv a1, s0
+	call printTela
+
+FIM: j FIM			# loop que para a execucao, similar ao ecall 10, mas n fecha o programa e fica em loop infinito
 
 # ---- Funcoes ----
 
@@ -1533,10 +1536,15 @@ piranhaPlantMove:
 plantUp:
 	li t3, 1
 	sb t3, 0(a2)		# plantState = 1
+
+	lh t5, 0(a0)		# le quem ta la antes de atualizar
+
 	li t3, 7
 	sh t3, 0(a0)		# 7 na matriz
-	
 
+	li t4, 4
+	beq t5, t4, gameOver	# se quem tava la eh o mario, entao mata eles
+	
 plant_fim:
 	la t0, plantFrames
 	sb t1, 0(t0)
