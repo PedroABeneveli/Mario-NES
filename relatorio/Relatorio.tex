@@ -177,7 +177,15 @@ Assim como os inimigos, as telas do trabalho seguem inspiração direta das tela
 
 
 \section{Resultados Obtidos}
-\indent \indent Após toda a confecção, testes no computador e na placa os resultados que foram obtidos com a confecção desse jogo são 
+\indent \indent Após toda a confecção e testes, existem diversos resultados que são importantes de citar ao serem obtidos com a confecção desse jogo. O primeiro resultado obtido foi a impossibilidade da implementação de tudo que foi planejado em tempo hábil. Diversas funcionalidades que foram analisadas do jogo original não puderam ser implementadas devido a imprevistos ao longo do desenvolvimento. 
+
+Entre as funcionalidades que foram analisadas e não puderam ser implementadas está a vida extra que seria dada pelo cogumelo, que só foi capaz de trocar a aparência do personagem. Outra mecânica que não foi implementada é o final do nível, pois a fase apenas buscou demonstrar todas as mecânicas implementadas, o que levou a inexistência de uma região que fosse determinada como um final para a obtenção da tela de vitória.
+
+Além das mecânicas que não puderam ser implementadas, também existiram aprendizados importantes que puderam ser considerados no desenvolvimento do jogo. Ao estar usando uma linguagem de baixo nível, é de extrema importância os comentários documentando tudo que está sendo feito, além do cuidado com os usos dos registradores, os quais podem ser facilmente sobrescritos, levando a erros catastróficos na execução do programa.
+
+Quanto ao uso de memória, foi observado durante o desenvolvimento que buscar minimizar os gastos implica em um ganho equivalente de complexidade. Este fato pode ser observado na utilização de uma matriz de blocos para a construção do mapa do jogo. Ao utilizar tal recurso, todo o sistema de movimentação, colisão e inimigos precisou ser adaptado para que o movimento dos personagens se mantivesse suave (movimentos de 2 pixeis por frame) ao contrário dos movimentos bruscos que a matriz inicialmente impunha (movimentos de 16 pixeis).
+
+Dessa forma, o trabalho cumpriu com seus objetivos de analisar a aplicação do Assembly RISC-V para o desenvolvimento de um jogo em conjunto com o gasto reduzido de memória. 
 
 \section{Conclusões}
 \indent \indent Desse modo, podemos concluir que as mecânicas principais do jogo são simples de identificar, no entanto a implementação requer uma quantidade considerável de tempo e um esforço maior do que as ideias transmitem.
