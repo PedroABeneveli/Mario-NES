@@ -421,6 +421,19 @@ loopPrMap:
 	# mario, como nos imprimimos o mario por cima depois, a gente pinta como ceu
 	li t0, 4
 	beq t0, t3, addr0
+
+	# partes do cano, onde 9 = supEsq, 10 = infEsq, 11 = supDir, 12 = infDir
+	li t0, 9
+	beq t0, t3, addr9
+
+	li t0, 10
+	beq t0, t3, addr10
+
+	li t0, 11
+	beq t0, t3, addr11
+
+	li t0, 12
+	beq t0, t3, addr12
 	
 	# idx 2
 	la a0, itemBlock
@@ -444,6 +457,24 @@ addr5:
 
 addr6:
 	la a0, itemBlockUsed
+	j imprimirTile
+
+addr9:
+	la a0, greenPipe1
+	j imprimirTile
+
+addr10:
+	la a0, greenPipe1
+	addi a0, a0, 256	# ta em uma parte mais inferior da label
+	j imprimirTile
+
+addr11:
+	la a0, greenPipe2
+	j imprimirTile
+
+addr12:
+	la a0, greenPipe2
+	addi a0, a0, 256	# ta em uma parte mais inferior da label
 	j imprimirTile
 
 addr8:
@@ -923,6 +954,19 @@ colisaoDir:
 	li t5, 7
 	beq t6, t5, gameOver	# piranha plant
 
+	# canos
+	li t5, 9
+	beq t6, t5, limiteDir
+
+	li t5, 10
+	beq t6, t5, limiteDir
+
+	li t5, 11
+	beq t6, t5, limiteDir
+
+	li t5, 12
+	beq t6, t5, limiteDir
+
 	# caso seja nenhum, move normal
 	j voltaRight
 
@@ -1045,6 +1089,19 @@ desceTileY:
 
 	li t0, 3
 	beq t0, t5, fGoomba
+
+	# cair em cima de algum pedaco de cano
+	li t0, 9
+	beq t0, t5, aterrissagem
+
+	li t0, 10
+	beq t0, t5, aterrissagem
+
+	li t0, 11
+	beq t0, t5, aterrissagem
+
+	li t0, 12
+	beq t0, t5, aterrissagem
 
 	# se for inimigo acho que pode tratar depois de alterar a posicao
 voltaDesceTileY:
@@ -1187,6 +1244,13 @@ fisSubindo:
 	# adicionando 2 a posicao y do mario no bitmap
 	lh t4, 0(t1)
 	addi t4, t4, -2
+
+	# eh brusco, mas evita que o jogo crashe kkkkkk
+	ble t4, zero, colisaoCima	# pra nao passar do teto do mapa
+	# ou, no caso do mario grande, o t4 - 16 eh menor que 0
+	addi t3, t4, -16
+	ble t3, zero, colisaoCima
+
 	# adicionando 2 a posicao relativa no tile (sobe)
 	lb t3, 0(t2)
 	addi t3, t3, 2
@@ -1319,6 +1383,15 @@ goomba_esq:
 	li a4, 1
 	# se tiver uma parede na frente, fica parado
 	beq a3, a4, goomba_fim
+	# se tiver algum pedaco de cano, fica parado
+	li a4, 9
+	beq a3, a4, goomba_fim
+	li a4, 10
+	beq a3, a4, goomba_fim
+	li a4, 11
+	beq a3, a4, goomba_fim
+	li a4, 12
+	beq a3, a4, goomba_fim
 
 	li a4, 4
 	beq a3, a4, morteGoombaEsq
@@ -1336,6 +1409,15 @@ goomba_dir:
 	lh a3, 2(a2)		# um endereço à direita do goomba
 	li a4, 1
 	# se tiver uma parede na frente, fica parado
+	beq a3, a4, goomba_fim
+	# se tiver algum pedaco de cano, n mexe
+	li a4, 9
+	beq a3, a4, goomba_fim
+	li a4, 10
+	beq a3, a4, goomba_fim
+	li a4, 11
+	beq a3, a4, goomba_fim
+	li a4, 12
 	beq a3, a4, goomba_fim
 
 	li a3, 0
