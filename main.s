@@ -43,12 +43,9 @@ plantState: .byte 0		# estado da planta: 0=fundoAzul, 1=piranhaPlant
 .text
 
 # imprime a tela principal e espera apertar espaco
-	la a0, menu_principal
-	li a1, 0
-	call printTela
 
 	la a0, tela_enredo
-	li a1, 1
+	li a1, 0
 	call printTela
 
 	li t0, 0xFF200000
@@ -60,19 +57,6 @@ esperaInput1:
 
 	li t1, ' '
 	bne t2, t1, esperaInput1	# se n for igual a espaco, continua esperando
-
-	li t1, 0xFF200604
-	li t2, 1
-	sw t2, 0(t1)	# troca a frame
-
-esperaInput2:
-	lw t1, 0(t0)			# controle teclado
-	andi t1, t1, 1			# mascara bit
-	beqz t1, esperaInput2	# le a tecla pressionada
-	lw t2, 4(t0)			# tecla pressionada
-
-	li t1, ' '
-	bne t2, t1, esperaInput2	# se n for igual a espaco, continua esperando
 
 setup: 
 	# Pra pelo menos ter um mapa antes de esperar o primeiro frame
@@ -353,10 +337,6 @@ gameOver:
 	li a0, 1500
 	li a7, 32
 	ecall			# realiza uma pausa de 1500 ms
-
-	la a0, tela_gameover
-	mv a1, s0
-	call printTela
 
 FIM: j FIM			# loop que para a execucao, similar ao ecall 10, mas n fecha o programa e fica em loop infinito
 
@@ -669,10 +649,10 @@ printTela:
 	add t1, t0, t1		# t1 = ultimo endereco da tela
 
 loopPrTela:
-	lw t2, 0(a0)
-	sw t2, 0(t0)
-	addi a0, a0, 4
-	addi t0, t0, 4
+	lb t2, 0(a0)
+	sb t2, 0(t0)
+	addi a0, a0, 1
+	addi t0, t0, 1
 	bne t0, t1, loopPrTela
 
 	ret
