@@ -80,7 +80,6 @@ Para o movimento vertical, a simulação precisará ser um pouco mais elaborada.
 
 Neste ponto, a movimentação de 2 pixels passa a ser orientada para baixo, fazendo o personagem cair, e encerrando o movimento apenas ao colidir com alguma superfície abaixo do personagem. Vale ressaltar que tanto o movimento horizontal, quanto o vertical estão diretamente ligados a movimentação da tela, portanto foi mantida a preocupação de manter as labels de controle do mapa sempre atualizadas durante o movimento para a coerência do que será mostrado ao usuário.
 
-
 \subsection{Power-Up e inimigos}
 \indent \indent O power-Up que foi adicionado ao jogo é o conhecido cogumelo capaz de tornar o personagem principal em uma versão maior de si mesmo, o que deveria garantir uma vida a mais ao personagem ao longo do nível percorrido. Para a implementação dessa questão o sistema de colisão desenvolvido foi reaproveitado para detectar a presença do cogumelo e trocar as animações que deveriam ser executadas a partir desse momento. Da mesma forma, os cálculos da física precisariam ser adaptados para o novo tamanho, porém mantendo sua base. A imagem utilizada pode ser encontrada na seção sobre a arte do jogo (\ref{Artes}).
 
@@ -90,7 +89,7 @@ O segundo inimigo analisado foi a planta que sai das tubulações no jogo. Esse 
 
 \begin{figure}[H]
 	\centering
-	\includegraphics[width=3cm]{figuras/Blocos.png}
+	\includegraphics[width=3cm]{figuras/Inimigos.png}
 	\caption{Inimigos}
 	\label{image: Inimigos}
 \end{figure}
@@ -114,7 +113,6 @@ Entre as imagens que representam o movimento, o caso da corrida é diferente do 
 Para a implementação da música, os códigos de referência previamente citados foram aplicados. A grande diferença providenciada por esses códigos está ligada a possibilidade da execução da música sem paralisar a execução das demais partes do código, o que é feito reunindo as notas a serem tocadas em um vetor que será percorrido um elemento por execução do loop principal do jogo.
 
 Utilizando da mesma ideia os efeitos sonoros foram aplicados. O principal efeito sonoro colocado no jogo foi o som indicativo de morte. Ao jogador cair em um buraco que leva ao fim do mapa, o sprite é trocado para o sprite de morte e uma música específica é tocada antes da finalização do programa.
-
 
 \subsection{Arte}
 \label{Artes}

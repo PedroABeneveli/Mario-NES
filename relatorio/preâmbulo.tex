@@ -1,0 +1,83 @@
+% Thiago T. P, 2022/2
+% template original: https://www.overleaf.com/read/yfjhddwvpcgh
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% LEMBRE-SE DE INCLUIR OS ARQUIVOS preâmbulo.tex E risc-v.tex %%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\usepackage[T1]{fontenc} % hifenização (quebra de palavra)
+\usepackage[utf8]{inputenc} % caracteres acentuados
+\usepackage[brazil]{babel} % tradução inglês -> português; e. g., resumo ao invés de abstract
+
+\usepackage{graphicx}	% possibilita inserção de imagem/pdf no texto
+\usepackage{rotating}	% permite a inserção de figuras deitadas
+\usepackage{float}		% dá a opção [H] para inserção precisa de figura
+\usepackage{booktabs}	% fornece comandos úteis para a confecção de tabelas
+\usepackage{multirow}	% para mesclagem de células verticais numa tabela
+
+\usepackage{amsmath, amssymb}	% suporte para equações matemáticas 
+
+\usepackage{mathptmx}		% fonte times no corpo de texto
+\usepackage[scaled]{helvet}	% helvetica em seções, subseções, legendas, etc.
+
+\usepackage{titlesec} % pacote para modificações nas strings de seções e similares
+\titleformat*{\section}			{\bfseries\sffamily\scshape}	% altera a fonte e estilo do nome de seção
+\titleformat*{\subsection}		{\bfseries\sffamily\scshape}	% altera a fonte e estilo do nome de subseção
+\titleformat*{\subsubsection}	{\sffamily\scshape}				% altera a fonte do nome de subsubseção
+% 0 pt -> identação esquerda, *2 -> espaço acima do nome, *.5 -> espaço abaixo
+\titlespacing*{\section}		{0pt}{*2}{*.5}	% modifica o espaçamento do nome de seção
+\titlespacing*{\subsection}		{0pt}{*2}{*.5}	% modifica o espaçamento do nome de subseção
+\titlespacing*{\subsubsection}	{0pt}{*2}{*.5}	% modifica o espaçamento do nome de subsubseção
+
+% definição de vários comprimentos importantes da página e texto
+%% comprimentos em polegadas (in) para ter numeros redondos
+\setlength\paperheight 		{11in}		% altura da folha
+\setlength\paperwidth  		{8.5in} 	% largura da folha
+\setlength{\textheight}		{9.25in}	% altura do texto
+\setlength{\topmargin}		{-0.7in}    % reajuste de margens
+\setlength{\headheight}		{0.20in}
+\setlength{\headsep}		{0.25in}
+\setlength{\footskip}		{0.50in}
+\flushbottom
+\setlength{\textwidth}		{7in}		% largura do texto
+\setlength{\oddsidemargin}	{-0.25in}
+\setlength{\evensidemargin}	{-0.25in}
+\setlength{\columnsep}		{2pc}		% separação entre colunas (1 in ~ 6 pc)
+
+\usepackage{caption} 	% permite mudar configurações de legendas
+\captionsetup{
+	labelfont={sf, bf},	% legenda em helvetica e negrito
+	textfont=it,		% texto da legenda em itálico
+	format=hang			% linhas identadas (observável apenas em textos longos)
+}
+
+\usepackage{lastpage}	% cria macro para o número da última página
+\usepackage{fancyhdr}	% fornece comandos que facilitam enfeitar a página
+	%% informações no topo 
+	\fancyhead[L]{Turma 3} 							% à esquerda
+	\fancyhead[C]{2022/2}							% ao centro
+	\fancyhead[R]{Prof. Dr. Marcus Vinicius Lamar}	% à direita
+	%% informações no fundo
+	\fancyfoot[L]{CIC0099 -- Organização e Arquitetura de Computadores} % à esquerda
+	\fancyfoot[C]{}														% ao centro (nenhuma)
+	\fancyfoot[R]{\thepage/\pageref*{LastPage}}							% à direita
+	                       %^ número da última página 
+	%% linhas horizontais superior e inferior
+	             % comprimento   % altura
+	\renewcommand{\headrulewidth}{0.5pt}	% mude para 0 pt se quiser apagar a linha
+	\renewcommand{\footrulewidth}{0.5pt}	% mude para 0 pt se quiser apagar a linha 
+	
+	\pagestyle{fancy} % doravante, todas a páginas, exceto o título, terão os enfeites definidos acima
+
+\usepackage{xcolor}		% maior variedade de cores
+\usepackage{listings} 	% inserção de texto de código em Latex
+	\input{risc-v}		% suporte para o Assembly RISC-V
+
+% comando \teaser para a criação da figura opcional no título
+\newcommand{\teaser}[2]{ % recebe dois argumentos, uma figura e uma legenda
+	\begin{center}
+		\captionsetup{type=figure}
+		\includegraphics[width=5cm]{#1} % figura é o primeiro argumento,
+		\captionof{figure}{#2}			% legenda é o segundo
+	\end{center}
+}
+
+\usepackage[colorlinks]{hyperref} % este pacote gera a funcionalidade de hyperlinks, citações, etc. e para evitar erros deve ser carregado por último
