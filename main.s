@@ -415,8 +415,8 @@ loopPrMap:
 	beq t0, t3, addr6
 
 	# mario, como nos imprimimos o mario por cima depois, a gente pinta como ceu
-	li t0, 4
-	beq t0, t3, addr0
+	#li t0, 4
+	#beq t0, t3, addr0
 	
 	# idx 2
 	la a0, itemBlock
@@ -776,15 +776,19 @@ trocaMatrizEsq:
 colisaoEsq:
 	# verifica a colisao da tile da esquerda
 	lh t5, -2(a0)
+	addi t4, a0, -2
 	
-	li t4, 1				# chao
-	beq t5, t4, limiteEsq
+	li t6, 1				# chao
+	beq t5, t6, limiteEsq
 
-	li t4, 2				# |?|
-	beq t5, t4, limiteEsq
+	li t6, 2				# |?|
+	beq t5, t6, limiteEsq
 
-	li t5, 6
+	li t6, 6
 	beq t6, t5, limiteEsq
+
+	li t6, 5
+	beq t6, t5, pegaCogumeloX
 
 	j voltaLeft1
 
@@ -1001,14 +1005,20 @@ fisicaY:
 desceTileY:
 	# quando ele tenta descer, vemos se tem algum chao ou alguma coisa pra parar a queda (ou inimigo pra derrotar)\
 	slli t0, a1, 1
-	add t0, a0, t0
-	lh t5, 0(t0)
+	add t6, a0, t0
+	lh t5, 0(t6)
 
 	li t0, 1	# chao
 	beq t0, t5, aterrissagem
 
 	li t0, 2	# |?|
 	beq t0, t5, aterrissagem
+
+	li t0, 6	# | |
+	beq t0, t5, aterrissagem
+
+	li t0, 5
+	beq t0, t5, pegaCogumeloY
 
 	# se for inimigo acho que pode tratar depois de alterar a posicao
 
@@ -1030,9 +1040,68 @@ desceTileY:
 
 	sh zero, 0(a0)			# guarda ceu onde o mario tava
 	slli t1, a1, 1
-	add a0, a0, t1			# volta pra linha de baixo
+	add t2, a0, t1			# volta pra linha de baixo
 	li t1, 4
-	sh t1, 0(a0)			# guarda mario na pos de cima
+	sh t1, 0(t2)			# guarda mario na pos de cima
+
+	li t0, 5
+	beq t0, t5, pegaCogumeloY
+
+	j fimFisicaY
+
+pegaCogumeloY:
+	addi sp, sp, -4
+	sw ra, 0(sp)
+
+	slli t0, a1, 1
+	add t6, a0, t0
+
+	sh zero, 0(t6)
+
+	la a0, mario_grande_default	# parte de cima	
+	li a1, 9	# vai aparecer no decimo tile a partir da esquerda (indexado em 0)
+	li t0, 16
+	mul a1, a1, t0
+	la a2, marioPosY
+	lh a2, 0(a2)
+	addi a2, a2, -16	# 16 posicoes em cima de onde ele ta como pequeno
+	li a3, 0
+	li a4, 0
+	xori a5, s0, 1
+	la a6, moveX
+	lb a6, 0(a6)
+	call printTile
+
+	la a0, mario_grande_default	# parte de baixo
+	addi a0, a0, 256
+	li a1, 9	# vai aparecer no decimo tile a partir da esquerda (indexado em 0)
+	li t0, 16
+	mul a1, a1, t0
+	la a2, marioPosY
+	lh a2, 0(a2)
+	li a3, 0
+	li a4, 0
+	xori a5, s0, 1
+	la a6, moveX
+	lb a6, 0(a6)
+	call printTile
+
+	la t0, marioGrande
+	li t1, 1
+	sb t1, 0(t0)
+
+	li a0,76		# define a nota
+	li a1,500		# define a duracao da nota em ms
+	li a2,1		# define o instrumento
+	li a3,127		# define o volume
+	li a7,33		# define o syscall
+	ecall			# toca a nota
+	li a0, 1000
+	li a7, 32
+	ecall			# realiza uma pausa de 1500 ms
+
+	lw ra, 0(sp)
+	addi sp, sp, 4
 
 	j fimFisicaY
 
@@ -1040,11 +1109,22 @@ aterrissagem:
 	la t0, moveY
 	sb zero, 0(t0)
 
+	addi t4, t4, 2
+	la t1, marioPosYAlin
+	sh t4, 0(t1)				# salva essa posicao, que esta alinhada com o tile
+
 	j fimFisicaY
 
 fisSubindo:
-	slli t6, a1, 1		# t6 = incremento de linha
+	la t0, marioGrande
+	lb t0, 0(t0)		# pequeno = 0, grande = 1
+
+	addi t0, t0, 1		# se for grande precisa ver 2 blocos acima, em vez de 1, ou seja 2 vezes mais que o pequeno. Coincidentemente, pra pequeno temos que fazer um shift de 1 bit, e pra dobrarmos isso fazemos um shift de 2 bits
+
+	sll t6, a1, t0		# t6 = incremento de linha
 	sub t0, a0, t6		# t0 = bloco em cima do mario na matriz
+	slli t6, a1, 1
+	sub t6, t0, t6		# endereco em cima do bloco que verificamos
 	lh t4, 0(t0)
 
 	li t3, 1
@@ -1063,6 +1143,9 @@ fisSubindo:
 	# adicionando 2 a posicao y do mario no bitmap
 	lh t4, 0(t1)
 	addi t4, t4, -2
+
+	blt t4, zero, colisaoCima	# se for menor que 0 tem o problema de tentar escrever fora da tela
+	
 	# adicionando 2 a posicao relativa no tile (sobe)
 	lb t3, 0(t2)
 	addi t3, t3, 2
@@ -1093,7 +1176,7 @@ colisaoCima:
 	sh t1, 0(t0)		# bloco |?| se torna usado
 	sub t0, t0, t6		# posicao em cima do bloco |?|
 	li t1, 5
-	sh t1, 0(t0)
+	sh t1, 0(t6)
 
 	j fimFisicaY
 
