@@ -71,7 +71,7 @@ esperaInput2:
 	bne t2, t1, esperaInput2	# se n for igual a espaco, continua esperando
 
 setup: 
-	# teste do printMap
+	# Pra pelo menos ter um mapa antes de esperar o primeiro frame
 	la a0, map
 	la t0, posEsq
 	lhu t0, 0(t0)
@@ -414,6 +414,10 @@ loopPrMap:
 	li t0, 6
 	beq t0, t3, addr6
 
+	# idx 8
+	li t0, 8
+	beq t0, t3, addr8
+
 	# mario, como nos imprimimos o mario por cima depois, a gente pinta como ceu
 	li t0, 4
 	beq t0, t3, addr0
@@ -440,6 +444,10 @@ addr5:
 
 addr6:
 	la a0, itemBlockUsed
+	j imprimirTile
+
+addr8:
+	la a0, goombaSmashed
 	
 imprimirTile:
 	mv a1, s2	# posX
@@ -785,10 +793,16 @@ colisaoEsq:
 	beq t5, t6, limiteEsq
 
 	li t6, 6
-	beq t6, t5, limiteEsq
+	beq t6, t5, limiteEsq	# |_|
 
 	li t6, 5
 	beq t6, t5, pegaCogumeloX
+
+	li t6, 3
+	beq t6, t5, gameOver	# goomba
+
+	li t6, 7
+	beq t6, t5, gameOver	# piranha plant
 
 	j voltaLeft1
 
@@ -898,10 +912,16 @@ colisaoDir:
 	beq t6, t5, limiteDir	# se eh uma caixa de item, n move a tela (pos do mario)
 	
 	li t5, 6
-	beq t6, t5, limiteDir
+	beq t6, t5, limiteDir	# caixa de item vazia
 
 	li t5, 5
 	beq t6, t5, pegaCogumeloX
+
+	li t5, 3
+	beq t6, t5, gameOver	# goomba
+
+	li t5, 7
+	beq t6, t5, gameOver	# piranha plant
 
 	# caso seja nenhum, move normal
 	j voltaRight
@@ -1020,7 +1040,14 @@ desceTileY:
 	li t0, 5
 	beq t0, t5, pegaCogumeloY
 
+	li t0, 7
+	beq t0, t5, gameOver	# pisou em um piranha plant
+
+	li t0, 3
+	beq t0, t5, fGoomba
+
 	# se for inimigo acho que pode tratar depois de alterar a posicao
+voltaDesceTileY:
 
 	addi t3, t3, 16
 	sh t4, 0(t1)
@@ -1115,6 +1142,29 @@ aterrissagem:
 	sh t4, 0(t1)
 
 	j fimFisicaY
+
+fGoomba:
+	addi sp, sp, -4
+	sw a0, 0(sp)
+
+	la t0, goomba_POS
+	lh t5, 0(t0)
+	slli t5, t5, 1
+	add a0, a0, t5
+	lh t5, 2(t0)
+	slli t5, t5, 1
+	mul t5, t5, a1
+	add a0, a0, t5		# posicao do goomba na matriz
+
+	li t0, 8
+	sh t0, 0(a0)
+
+	la t0, goomba_POS
+	sh zero, 0(t0)
+
+	lw a0, 0(sp)
+	addi sp, sp, 4
+	j voltaDesceTileY
 
 fisSubindo:
 	slli t6, a1, 1		# t6 = incremento de linha
@@ -1246,7 +1296,7 @@ goombaMove:
 	# faz a verificação de onde está o mario
 	li a4, 4
 	lh a3, 2(a2)
-	beq a3, a4, goomba_dir
+	beq a3, a4, morteGoombaDir
 
 	lh a3, 4(a2)
 	beq a3, a4, goomba_dir
@@ -1270,6 +1320,9 @@ goomba_esq:
 	# se tiver uma parede na frente, fica parado
 	beq a3, a4, goomba_fim
 
+	li a4, 4
+	beq a3, a4, morteGoombaEsq
+
 	li a3, 0
 	sh a3, 0(a2)			# lugar atual do goomba -> fundoAzul
 	li a3, 3
@@ -1291,7 +1344,7 @@ goomba_dir:
 	sh a3, 2(a2)
 	la a0, goomba_POS
 	lh a1, 0(a0)
-	addi a3, a1, 1		# decrementa o goomba_POS em 2
+	addi a3, a1, 1		# decrementa o goomba_POS em 1
 	sh a3, 0(a0)
 	j goomba_fim
 
@@ -1310,6 +1363,28 @@ goomba_fim:
 	lw a0, 0(sp)
 	addi sp, sp, 20
 	ret
+
+morteGoombaDir:
+	li a3, 0
+	sh a3, 0(a2)			# lugar atual do goomba -> fundoAzul
+	li a3, 3
+	sh a3, 2(a2)
+	la a0, goomba_POS
+	lh a1, 0(a0)
+	addi a3, a1, 1		# decrementa o goomba_POS em 1
+	sh a3, 0(a0)
+
+	j gameOver
+
+morteGoombaEsq:
+	li a3, 0
+	sh a3, 0(a2)			# lugar atual do goomba -> fundoAzul
+	li a3, 3
+	sh a3, -2(a2)
+	addi a3, a1, -1		# decrementa o goomba_POS em 2
+	sh a3, 0(a0)
+
+	j gameOver
 
 # vamo que vamo :)
 
