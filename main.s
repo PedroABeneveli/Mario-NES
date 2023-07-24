@@ -36,6 +36,10 @@ MARIO_MOV: .byte 0		# 0 = parado, 1 = andando1, 2 = andando2, 3 = andando3
 goomba_POS: .half 16, 11 #x, y #582
 goombaFrames: .byte 0	# quantos frames desde que o goomba moveu pela ultima vez
 
+plant_POS: .half 18, 9 # x, y
+plantFrames: .byte 0	# quantos frames desde que a piranha plant moveu pela ultima vez
+plantState: .byte 0		# estado da planta: 0=fundoAzul, 1=piranhaPlant
+
 .text
 
 # imprime a tela principal e espera apertar espaco
@@ -135,6 +139,21 @@ gameloop:
 	mul t0, t1, a1
 	add a0, a0, t0
 	call goombaMove
+
+	la a1, mapLength
+	lh a1, 0(a1)
+	la a0, map
+
+	la t0, plant_POS
+	lh t1, 0(t0)
+	slli t1, t1, 1
+	add a0, a0, t1
+	lh t0, 2(t0)
+	slli t1, t0, 1
+	mul t0, t1, a1
+	add a0, a0, t0
+	la a2, plantState
+	call piranhaPlantMove
   	
   	# printa o mapa atualizado
   	la a0, map
@@ -414,6 +433,10 @@ loopPrMap:
 	li t0, 6
 	beq t0, t3, addr6
 
+	# idx 7
+	li t0, 7
+	beq t0, t3, addr7
+
 	# idx 8
 	li t0, 8
 	beq t0, t3, addr8
@@ -458,6 +481,11 @@ addr5:
 addr6:
 	la a0, itemBlockUsed
 	j imprimirTile
+
+
+addr7:
+	la a0, piranhaPlant
+  j imprimirTile
 
 addr9:
 	la a0, greenPipe1
@@ -752,6 +780,9 @@ input:
 
 	#li t3, 'g'
 	#beq t3, t2, goombaMove
+
+	li t3, 'p'
+	beq t3, t2, piranhaPlantMove
 	
 	j fimInput
 	
@@ -1467,6 +1498,51 @@ morteGoombaEsq:
 	sh a3, 0(a0)
 
 	j gameOver
+
+
+
+# move a piranha plant
+# a0 = endereco da piranha plant na matriz
+# a1 = tamanho do mapa
+# a2 = endereço do plantState
+piranhaPlantMove:
+	addi sp, sp, -12
+	sw a0, 0(sp)
+	sw a1, 4(sp)
+	sw a2, 8(sp)
+
+	la t0, plantFrames
+	lb t1, 0(t0)
+	addi t1, t1, 1
+	li t2, 120
+	bne t1, t2, plant_fim		# se ja passaram 120 frames, faz a movimentacao
+	li t1, 0					# se vai mover, reseta o contador
+
+	lb t3, 0(a2)
+	beqz t3, plantUp		# se a planta estiver abaixada, ela sobe
+
+	# se nao, ela desce
+	sb zero, 0(a2)		# plantState = 0
+	sh zero, 0(a0)		# 0 na matriz
+	j plant_fim
+
+plantUp:
+	li t3, 1
+	sb t3, 0(a2)		# plantState = 1
+	li t3, 7
+	sh t3, 0(a0)		# 7 na matriz
+	
+
+plant_fim:
+	la t0, plantFrames
+	sb t1, 0(t0)
+
+	lw a2, 8(sp)
+	lw a1, 4(sp)
+	lw a0, 0(sp)
+	addi sp, sp, 12
+	ret
+
 
 # vamo que vamo :)
 
