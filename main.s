@@ -33,10 +33,10 @@ marioPosMatriz: .half 9, 11		# x, y
 # testando
 MARIO_MOV: .byte 0		# 0 = parado, 1 = andando1, 2 = andando2, 3 = andando3
 
-goomba_POS: .half 16, 11 #x, y #582
+goomba_POS: .half 34, 11 #x, y #582
 goombaFrames: .byte 0	# quantos frames desde que o goomba moveu pela ultima vez
 
-plant_POS: .half 18, 9 # x, y
+plant_POS: .half 29, 9 # x, y
 plantFrames: .byte 0	# quantos frames desde que a piranha plant moveu pela ultima vez
 plantState: .byte 0		# estado da planta: 0=fundoAzul, 1=piranhaPlant
 
