@@ -1388,25 +1388,29 @@ goombaMove:
 	li t0, 0
 	beq t0, a1, goomba_limbo
 
+	la a4, marioPosMatriz
+	lh a4, 0(a4)
+	blt a1, a4, goomba_dir
+
 	# faz a verificação de onde está o mario
-	li a4, 4
-	lh a3, 2(a2)
-	beq a3, a4, morteGoombaDir
+	#li a4, 4
+	#lh a3, 2(a2)
+	#beq a3, a4, morteGoombaDir
 
-	lh a3, 4(a2)
-	beq a3, a4, goomba_dir
+	#lh a3, 4(a2)
+	#beq a3, a4, goomba_dir
 
-	lh a3, 6(a2)
-	beq a3, a4, goomba_dir
+	#lh a3, 6(a2)
+	#beq a3, a4, goomba_dir
 
-	lh a3, 8(a2)
-	beq a3, a4, goomba_dir
+	#lh a3, 8(a2)
+	#beq a3, a4, goomba_dir
 
-	lh a3, 10(a2)
-	beq a3, a4, goomba_dir
+	#lh a3, 10(a2)
+	#beq a3, a4, goomba_dir
 
-	lh a3, 12(a2)
-	beq a3, a4, goomba_dir
+	#lh a3, 12(a2)
+	#beq a3, a4, goomba_dir
 
 	# se o mario estiver à esquerda, vai à esquerda
 goomba_esq:
